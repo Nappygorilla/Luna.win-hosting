@@ -318,7 +318,6 @@ async function route(req, res) {
       );
       const session = await createSession(result.rows[0].id);
       sessionCookie(res, session.token, SESSION_TTL_DAYS * 86400);
-      setCsrfCookie(res, newSessionToken());
       return json(res, 201, { user: result.rows[0] });
     } catch (error) {
       if (error.code === "23505") return json(res, 409, { error: "Account already exists" });
@@ -339,7 +338,6 @@ async function route(req, res) {
     }
     const session = await createSession(result.rows[0].id);
     sessionCookie(res, session.token, SESSION_TTL_DAYS * 86400);
-    setCsrfCookie(res, newSessionToken());
     return json(res, 200, { user: { id: result.rows[0].id, email: result.rows[0].email } });
   }
 
