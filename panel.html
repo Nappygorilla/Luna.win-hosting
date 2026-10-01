@@ -31,11 +31,23 @@
       <div>
         <span class="section-kicker">LUNA CONTROL</span>
         <h1>Manage your bots.</h1>
-        <p>Control containers, inspect logs, and monitor resources through the Luna API.</p>
+        <p>Choose a plan, review the service configuration, and manage the bot once the Luna API is connected.</p>
       </div>
       <div class="demo-warning" id="demo-warning">
         <strong>Frontend only</strong>
-        <span>No API is configured, so actions are disabled instead of pretending they succeeded.</span>
+        <span id="demo-warning-text">No Luna API is connected. Demo state is shown and service actions remain disabled.</span>
+      </div>
+    </section>
+
+    <section class="selection-card panel-card" id="selection-card">
+      <div>
+        <span class="section-kicker">SETUP</span>
+        <h2 id="selection-title">Select a hosting tier</h2>
+        <p id="selection-copy">Choose a plan from the pricing page to preload your intended resource tier here.</p>
+      </div>
+      <div class="selection-actions">
+        <a class="button button-secondary" href="index.html#plans">Change plan</a>
+        <button class="button button-primary" id="provision-button" type="button" disabled>Provision service</button>
       </div>
     </section>
 
