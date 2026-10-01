@@ -8,13 +8,12 @@
   <title>Luna Control Panel — Luna.win</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="panel-page">
   <div class="noise" aria-hidden="true"></div>
   <header class="site-header">
-    <nav class="nav container">
+    <nav class="nav container" aria-label="Panel navigation">
       <a class="brand" href="index.html">
         <span class="brand-mark" aria-hidden="true"><span class="moon"></span></span>
         <span>Luna<span class="brand-dot">.</span>win</span>
@@ -30,99 +29,126 @@
     <section class="panel-heading">
       <div>
         <span class="section-kicker">LUNA CONTROL</span>
-        <h1>Manage your bots.</h1>
-        <p>Choose a plan, review the service configuration, and manage the bot once the Luna API is connected.</p>
+        <h1>Your services.</h1>
+        <p>Manage every hosted bot from one account. Live state appears here after the Luna API is connected.</p>
       </div>
       <div class="demo-warning" id="demo-warning">
-        <strong>Frontend only</strong>
-        <span id="demo-warning-text">No Luna API is connected. Demo state is shown and service actions remain disabled.</span>
+        <strong id="panel-state-title">Frontend only</strong>
+        <span id="demo-warning-text">No Luna API is connected. Live service data and actions are unavailable.</span>
       </div>
     </section>
 
-    <section class="selection-card panel-card" id="selection-card">
+    <section class="dashboard-layout">
+      <aside class="service-list-card panel-card" aria-label="Hosted services">
+        <div class="panel-card-top">
+          <div>
+            <span class="section-kicker">SERVICES</span>
+            <h2>Hosted bots</h2>
+          </div>
+          <a class="mini-button mini-link" href="index.html#plans">Add bot</a>
+        </div>
+        <div class="service-list" id="service-list">
+          <div class="service-empty">No live services loaded.</div>
+        </div>
+      </aside>
+
+      <section class="service-workspace">
+        <div class="selection-card panel-card" id="selection-card">
+          <div>
+            <span class="section-kicker">SELECTED SERVICE</span>
+            <h2 id="selection-title">Choose a bot</h2>
+            <p id="selection-copy">Select a service from the left to view live resource limits, logs, and controls.</p>
+          </div>
+          <div class="selection-actions">
+            <a class="button button-secondary" href="index.html#plans">Add another bot</a>
+            <button class="button button-primary" id="provision-button" type="button" disabled>Start checkout</button>
+          </div>
+        </div>
+
+        <div class="panel-grid">
+          <article class="panel-card bot-summary">
+            <div class="panel-card-top">
+              <div>
+                <span class="section-kicker">SERVICE</span>
+                <h2 id="bot-name">—</h2>
+              </div>
+              <span class="status-pill" id="bot-status">—</span>
+            </div>
+
+            <div class="resource-grid">
+              <div class="resource"><span>Plan</span><strong id="bot-plan">—</strong></div>
+              <div class="resource"><span>Runtime</span><strong id="bot-runtime">—</strong></div>
+              <div class="resource"><span>RAM limit</span><strong id="bot-ram">—</strong></div>
+              <div class="resource"><span>Storage</span><strong id="bot-storage">—</strong></div>
+            </div>
+
+            <div class="panel-actions">
+              <button class="button button-primary api-action" data-action="start" disabled>Start</button>
+              <button class="button button-secondary api-action" data-action="restart" disabled>Restart</button>
+              <button class="button button-secondary api-action" data-action="stop" disabled>Stop</button>
+            </div>
+          </article>
+
+          <article class="panel-card usage-card">
+            <div class="panel-card-top">
+              <div>
+                <span class="section-kicker">USAGE</span>
+                <h2>Live usage</h2>
+              </div>
+              <span class="small-label" id="usage-state">Waiting for API</span>
+            </div>
+            <div class="usage-row"><div><span>Memory</span><strong id="usage-memory">—</strong></div><div class="meter large"><span id="memory-meter" style="width:0%"></span></div></div>
+            <div class="usage-row"><div><span>CPU</span><strong id="usage-cpu">—</strong></div><div class="meter large"><span id="cpu-meter" style="width:0%"></span></div></div>
+            <div class="usage-row"><div><span>Storage</span><strong id="usage-storage">—</strong></div><div class="meter large"><span id="storage-meter" style="width:0%"></span></div></div>
+          </article>
+
+          <article class="panel-card logs-card">
+            <div class="panel-card-top">
+              <div>
+                <span class="section-kicker">LOGS</span>
+                <h2>Service output</h2>
+              </div>
+              <button class="mini-button api-action" id="refresh-logs" data-action="logs" disabled>Refresh</button>
+            </div>
+            <div class="panel-log" id="log-output">
+              <div class="log-empty">Connect the Luna API and select a service to load logs.</div>
+            </div>
+          </article>
+
+          <article class="panel-card config-card">
+            <div class="panel-card-top">
+              <div>
+                <span class="section-kicker">CONFIG</span>
+                <h2>Environment</h2>
+              </div>
+              <span class="small-label">Secrets stay server-side</span>
+            </div>
+            <div class="env-row"><code>NODE_ENV</code><span>—</span></div>
+            <div class="env-row"><code>BOT_COMMAND_PREFIX</code><span>—</span></div>
+            <div class="env-row env-secret"><code>DISCORD_TOKEN</code><span>••••••••••••••••</span></div>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <section class="billing-card panel-card">
       <div>
-        <span class="section-kicker">SETUP</span>
-        <h2 id="selection-title">Select a hosting tier</h2>
-        <p id="selection-copy">Choose a plan from the pricing page to preload your intended resource tier here.</p>
+        <span class="section-kicker">BILLING</span>
+        <h2>Subscription management</h2>
+        <p id="billing-copy">Sign in with the Luna API to view billing status and manage your subscription.</p>
       </div>
-      <div class="selection-actions">
-        <a class="button button-secondary" href="index.html#plans">Change plan</a>
-        <button class="button button-primary" id="provision-button" type="button" disabled>Provision service</button>
+      <div class="billing-actions">
+        <button class="button button-secondary" id="portal-button" disabled>Manage billing</button>
+        <button class="button button-secondary" id="cancel-button" disabled>Cancel at period end</button>
       </div>
-    </section>
-
-    <section class="panel-grid">
-      <article class="panel-card bot-summary">
-        <div class="panel-card-top">
-          <div>
-            <span class="section-kicker">SERVICE</span>
-            <h2 id="bot-name">discord-bot</h2>
-          </div>
-          <span class="status-pill" id="bot-status">Demo</span>
-        </div>
-
-        <div class="resource-grid">
-          <div class="resource"><span>Plan</span><strong id="bot-plan">Starter</strong></div>
-          <div class="resource"><span>RAM limit</span><strong id="bot-ram">512 MB</strong></div>
-          <div class="resource"><span>vCPU limit</span><strong id="bot-cpu">1</strong></div>
-          <div class="resource"><span>Storage</span><strong id="bot-storage">5 GB</strong></div>
-        </div>
-
-        <div class="panel-actions">
-          <button class="button button-primary api-action" data-action="start" disabled>Start</button>
-          <button class="button button-secondary api-action" data-action="restart" disabled>Restart</button>
-          <button class="button button-secondary api-action" data-action="stop" disabled>Stop</button>
-        </div>
-      </article>
-
-      <article class="panel-card usage-card">
-        <div class="panel-card-top">
-          <div>
-            <span class="section-kicker">USAGE</span>
-            <h2>Resource limits</h2>
-          </div>
-          <span class="small-label">Demo values</span>
-        </div>
-        <div class="usage-row"><div><span>Memory</span><strong>142 MB / 512 MB</strong></div><div class="meter large"><span style="width:28%"></span></div></div>
-        <div class="usage-row"><div><span>CPU</span><strong>8.4% / 100%</strong></div><div class="meter large"><span style="width:8.4%"></span></div></div>
-        <div class="usage-row"><div><span>Storage</span><strong>1.2 GB / 5 GB</strong></div><div class="meter large"><span style="width:24%"></span></div></div>
-      </article>
-
-      <article class="panel-card logs-card">
-        <div class="panel-card-top">
-          <div>
-            <span class="section-kicker">LOGS</span>
-            <h2>Service output</h2>
-          </div>
-          <button class="mini-button api-action" data-action="refresh-logs" disabled>Refresh</button>
-        </div>
-        <div class="panel-log" id="log-output">
-          <div><span>09:14:02</span> pulling latest commit… <b>demo</b></div>
-          <div><span>09:14:03</span> installing dependencies… <b>demo</b></div>
-          <div><span>09:14:08</span> starting discord-bot… <b>demo</b></div>
-          <div><span>09:14:09</span> Discord gateway connection ready.</div>
-        </div>
-      </article>
-
-      <article class="panel-card config-card">
-        <div class="panel-card-top">
-          <div>
-            <span class="section-kicker">CONFIG</span>
-            <h2>Environment</h2>
-          </div>
-          <span class="small-label">Secrets stay server-side</span>
-        </div>
-        <div class="env-row"><code>NODE_ENV</code><span>production</span></div>
-        <div class="env-row"><code>BOT_COMMAND_PREFIX</code><span>!</span></div>
-        <div class="env-row env-secret"><code>DISCORD_TOKEN</code><span>••••••••••••••••</span></div>
-      </article>
     </section>
 
     <section class="panel-note">
-      <span class="section-kicker">API CONTRACT</span>
-      <p>The panel is wired for a versioned Luna API. Set <code>window.LUNA_API_BASE</code> before loading <code>panel.js</code> to connect these controls to your backend.</p>
+      <span class="section-kicker">SECURITY</span>
+      <p>Customer actions use authenticated API sessions. VPS agents authenticate with a timestamped HMAC signature and do not send their raw agent secret with normal requests.</p>
     </section>
   </main>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="panel.js"></script>
 </body>
