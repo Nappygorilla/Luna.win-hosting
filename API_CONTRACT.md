@@ -11,6 +11,7 @@ Configure the frontend with:
 ## Required endpoints
 
 - `GET /v1/services` — list services visible to the authenticated user
+- `POST /v1/services` — request provisioning for a plan, returning the created service or job
 - `GET /v1/services/:id` — service state, plan, runtime and resource limits
 - `POST /v1/services/:id/actions/start`
 - `POST /v1/services/:id/actions/stop`
@@ -19,6 +20,10 @@ Configure the frontend with:
 - `PUT /v1/services/:id/env`
 - `GET /v1/account`
 - `GET /v1/account/subscription`
+
+## Service state
+
+The panel should use the service ID returned by the API. It must not hard-code a customer service identifier.
 
 ## Agent boundary
 
