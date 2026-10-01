@@ -61,6 +61,15 @@ export async function restartContainer(containerName) {
   await execFileAsync("docker", ["restart", "--time", "10", containerName], { timeout: 30_000 });
 }
 
+export async function readContainerLogs(containerName, tail = 200) {
+  const boundedTail = Math.max(1, Math.min(Number(tail) || 200, 500));
+  const result = await execFileAsync("docker", ["logs", "--tail", String(boundedTail), "--timestamps", containerName], {
+    timeout: 30_000,
+    maxBuffer: 2 * 1024 * 1024
+  });
+  return result.stdout;
+}
+
 export function enforceContainerPolicy(service) {
   const plan = getPlan(service.planId);
   const limits = enforcePlanLimits(plan, service);
