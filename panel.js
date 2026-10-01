@@ -136,7 +136,16 @@
     const output = document.getElementById("log-output");
     output.innerHTML = '<div class="log-empty">Requesting latest logs…</div>';
     try {
-      const data = await api("/v1/services/" + encodeURIComponent(selectedService.id) + "/logs?limit=100");
+      await api("/v1/services/" + encodeURIComponent(selectedService.id) + "/actions/logs", {
+        method: "POST",
+        body: "{}"
+      }).catch(() => {});
+      let data = { logs: [] };
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        data = await api("/v1/services/" + encodeURIComponent(selectedService.id) + "/logs?limit=100");
+        if (Array.isArray(data.logs) && data.logs.length) break;
+      }
       const logs = Array.isArray(data.logs) ? data.logs : [];
       if (!logs.length) {
         output.innerHTML = '<div class="log-empty">No logs have been recorded for this service yet.</div>';
