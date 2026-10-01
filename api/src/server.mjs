@@ -539,7 +539,7 @@ async function route(req, res) {
     return json(res, 200, { service: serviceView(service) });
   }
 
-  const actionMatch = path.match(/^\/v1\/services\/([^/]+)\/actions\/(start|stop|restart)$/);
+  const actionMatch = path.match(/^\/v1\/services\/([^/]+)\/actions\/(start|stop|restart|logs)$/);
   if (actionMatch && req.method === "POST") {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -548,12 +548,28 @@ async function route(req, res) {
     if (!service) return json(res, 404, { error: "Service not found" });
     const action = actionMatch[2];
     await assignJob(service.id, action, {});
-    await pool.query(
-      "UPDATE services SET status=$2,updated_at=now() WHERE id=$1",
-      [service.id, action === "start" ? "starting" : action === "stop" ? "stopping" : "restarting"]
-    );
+    if (action !== "logs") {
+      await pool.query(
+        "UPDATE services SET status=$2,updated_at=now() WHERE id=$1",
+        [service.id, action === "start" ? "starting" : action === "stop" ? "stopping" : "restarting"]
+      );
+    }
     await audit(user.id, service.id, "service." + action);
     return json(res, 202, { accepted: true, status: action });
+  }
+
+  const logsRoute = path.match(/^\/v1\/services\/([^/]+)\/logs$/);
+  if (logsRoute && req.method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const service = await getServiceForUser(logsRoute[1], user.id);
+    if (!service) return json(res, 404, { error: "Service not found" });
+    const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 100), 500));
+    const result = await pool.query(
+      "SELECT id,source,content,created_at FROM service_logs WHERE service_id=$1 ORDER BY id DESC LIMIT $2",
+      [service.id, limit]
+    );
+    return json(res, 200, { logs: result.rows.reverse() });
   }
 
   const envMatch = path.match(/^\/v1\/services\/([^/]+)\/env$/);
@@ -783,6 +799,16 @@ async function route(req, res) {
         "UPDATE services SET status=$2,container_id=COALESCE($3,container_id),node_id=$4,updated_at=now() WHERE id=$1",
         [requestBody.serviceId, ok ? (requestBody.status || "running") : "error", requestBody.containerId || null, agentId]
       );
+      if (typeof requestBody.logs === "string" && requestBody.logs.length) {
+        await pool.query(
+          "INSERT INTO service_logs(service_id,source,content) VALUES($1,'agent',$2)",
+          [requestBody.serviceId, requestBody.logs.slice(-200000)]
+        );
+        await pool.query(
+          "DELETE FROM service_logs WHERE service_id=$1 AND id NOT IN (SELECT id FROM service_logs WHERE service_id=$1 ORDER BY id DESC LIMIT 1000)",
+          [requestBody.serviceId]
+        );
+      }
     }
     return json(res, 200, { ok: true });
   }
