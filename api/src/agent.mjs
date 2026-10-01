@@ -30,6 +30,7 @@ export function dockerArgsForService(service, env = {}) {
     "--security-opt", "no-new-privileges:true",
     "--user", "10001:10001",
     "--read-only",
+    "--storage-opt", "size=" + limits.storageGb + "G",
     "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=128m",
     "--restart", "on-failure:5"
   ];
