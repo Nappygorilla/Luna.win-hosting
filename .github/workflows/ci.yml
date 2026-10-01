@@ -20,5 +20,9 @@ jobs:
           cache-dependency-path: api/package.json
       - run: npm install
       - run: node --check src/server.mjs
+      - run: node --check src/server.mjs
       - run: node --check src/agent-runner.mjs
+      - run: node --check src/agent.mjs
+      - run: node --check src/billing.mjs
+      - run: node --check src/mailer.mjs
       - run: npm test
