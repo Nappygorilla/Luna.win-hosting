@@ -31,7 +31,7 @@
         <a href="#plans">Plans</a>
         <a href="#how-it-works">How it works</a>
         <a href="#faq">FAQ</a>
-        <a class="nav-login" href="#start">Client panel</a>
+        <a class="nav-login" href="panel.html">Client panel</a>
       </div>
     </nav>
   </header>
@@ -63,8 +63,8 @@
           <div class="metric-grid">
             <article class="metric-card">
               <span class="metric-label">Bot status</span>
-              <strong class="online-text">● Online</strong>
-              <small>Uptime 99.99%</small>
+              <strong class="online-text">● Demo online</strong>
+              <small>Sample dashboard data</small>
             </article>
             <article class="metric-card">
               <span class="metric-label">Memory</span>
@@ -91,8 +91,8 @@
             <div><span>09:14:09</span> Connected to Discord gateway.</div>
           </div>
           <div class="terminal-footer">
-            <div><span class="pulse"></span> Live logs</div>
-            <button type="button" class="mini-button">Restart bot</button>
+            <div><span class="pulse"></span> Demo dashboard</div>
+            <a class="mini-button mini-link" href="panel.html">Open panel</a>
           </div>
         </div>
       </div>
@@ -138,16 +138,16 @@
         <article class="feature-card">
           <div class="feature-icon">03</div>
           <h3>Simple control panel</h3>
-          <p>Logs, restarts, environment variables, usage, and deployment controls in one focused workspace.</p>
+          <p>Logs, restarts, environment variables, usage, and deployment controls in the Luna client panel.</p>
           <div class="control-row"><span>CPU usage</span><strong>12%</strong></div>
-          <div class="control-row"><span>Memory</span><strong>142 MB</strong></div>
+          <div class="control-row"><span>Memory (demo)</span><strong>142 MB</strong></div>
           <div class="control-row"><span>Status</span><strong class="online-text">Online</strong></div>
         </article>
 
         <article class="feature-card">
           <div class="feature-icon">04</div>
           <h3>Developer friendly</h3>
-          <p>Run common Node.js and Python Discord stacks with a workflow that feels familiar from day one.</p>
+          <p>Run supported Node.js and Python Discord stacks with explicit runtime and resource limits per plan.</p>
           <div class="code-chip"><span>npm run start</span><span>python bot.py</span></div>
         </article>
       </div>
@@ -219,7 +219,7 @@
           <span class="section-kicker">HOW IT WORKS</span>
           <h2>From code to online.</h2>
         </div>
-        <p>Three straightforward steps. No VPS maintenance checklist required.</p>
+        <p>Create a service, deploy your code, then manage the bot from the client panel while Luna handles the hosting layer.</p>
       </div>
 
       <div class="steps">
@@ -246,24 +246,32 @@
         <div>
           <span class="section-kicker">FAQ</span>
           <h2>Questions,<br><span class="muted">answered.</span></h2>
-          <p>Need something specific? Point customers to your support Discord or add your own contact route here.</p>
+          <p>These answers describe the intended Luna service model. Publish the final policy pages before taking paid signups.</p>
         </div>
         <div class="faq-list">
           <details open>
-            <summary>What can I host?</summary>
-            <p>Luna is designed for Discord bots and bot-adjacent Node.js or Python workloads. Your exact supported runtimes should be defined by the final hosting backend.</p>
+            <summary>What runtimes are supported?</summary>
+            <p>The initial service target is Node.js and Python Discord bots. The final runtime matrix should be enforced by the container image selected for each plan, including supported major versions.</p>
+          </details>
+          <details>
+            <summary>What happens if my bot crashes?</summary>
+            <p>Luna is designed to detect an exited process and restart it according to the service restart policy. Crash loops should be rate-limited and surfaced in the panel logs instead of being restarted forever.</p>
           </details>
           <details>
             <summary>Can I use environment variables?</summary>
-            <p>Yes — the control panel is designed to support secrets such as bot tokens without putting them directly into source files.</p>
+            <p>Yes. Secrets should be stored as environment variables and injected into the isolated bot container at runtime rather than committed to your repository.</p>
           </details>
           <details>
-            <summary>Do plans include backups?</summary>
-            <p>Backups are not represented as a guaranteed feature on this landing page. Add the exact backup policy once your infrastructure is finalized.</p>
+            <summary>How do backups work?</summary>
+            <p>Backups should cover persistent bot data and configuration according to the final retention policy. Until that policy is implemented and published, Luna does not promise a specific backup frequency or retention period.</p>
+          </details>
+          <details>
+            <summary>What happens when I cancel?</summary>
+            <p>Cancellation should stop renewal first, then preserve service data only for the published grace period before deletion. The exact billing and data-deletion terms should be published before launch.</p>
           </details>
           <details>
             <summary>How do I get started?</summary>
-            <p>Use the client panel link to create your hosting space, or connect your signup flow to the “Get started” button below.</p>
+            <p>Open the Luna client panel to manage hosted bots. Paid provisioning should be connected to the API before the plan buttons are used for real orders.</p>
           </details>
         </div>
       </div>
@@ -274,9 +282,9 @@
         <div>
           <span class="section-kicker">READY TO LAUNCH?</span>
           <h2>Give your bot a place<br>to call home.</h2>
-          <p>Replace this button with your real signup or checkout route when the hosting backend is ready.</p>
+          <p>Launch from the client panel once your Luna API account and billing flow are connected.</p>
         </div>
-        <a class="button button-primary" href="mailto:hello@luna.win">Get started <span>↗</span></a>
+        <a class="button button-primary" href="panel.html">Open client panel <span>↗</span></a>
       </div>
     </section>
   </main>
@@ -294,11 +302,11 @@
         <a href="#features">Features</a>
         <a href="#plans">Plans</a>
         <a href="#faq">FAQ</a>
-        <a href="mailto:hello@luna.win">Contact</a>
+        <a href="#faq">Support</a>
       </div>
       <div class="footer-meta">
         <span>© <span id="year"></span> Luna Hosting</span>
-        <span>Built for the Discord community</span>
+        <span>API → agent → isolated container → Discord</span>
       </div>
     </div>
   </footer>
