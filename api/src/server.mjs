@@ -342,6 +342,7 @@ async function route(req, res) {
   }
 
   if (path === "/v1/auth/logout" && req.method === "POST") {
+    if (!requireOriginAndCsrf(req, res)) return;
     const token = parseCookies(req)[COOKIE];
     if (token) await pool.query("DELETE FROM sessions WHERE token_hash=$1", [hashSessionToken(token)]);
     res.setHeader("Set-Cookie", [
