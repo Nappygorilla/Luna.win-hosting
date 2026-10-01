@@ -18,7 +18,6 @@ async function request(path, payload) {
     headers: {
       "Content-Type": "application/json",
       "X-Agent-Id": AGENT_ID,
-      "X-Agent-Secret": AGENT_SECRET,
       "X-Agent-Timestamp": signed.timestamp,
       "X-Agent-Signature": signed.signature
     },
@@ -72,7 +71,6 @@ async function postResult(result, jobId) {
     headers: {
       "Content-Type": "application/json",
       "X-Agent-Id": AGENT_ID,
-      "X-Agent-Secret": AGENT_SECRET,
       "X-Agent-Timestamp": signed.timestamp,
       "X-Agent-Signature": signed.signature
     },
@@ -90,7 +88,6 @@ async function heartbeat() {
     headers: {
       "Content-Type": "application/json",
       "X-Agent-Id": AGENT_ID,
-      "X-Agent-Secret": AGENT_SECRET,
       "X-Agent-Timestamp": signed.timestamp,
       "X-Agent-Signature": signed.signature
     },
