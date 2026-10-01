@@ -431,7 +431,26 @@ async function route(req, res) {
   if (path === "/v1/account" && req.method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
-    return json(res, 200, { user });
+    const account = await pool.query(
+      "SELECT id,email,email_verified_at,created_at FROM users WHERE id=$1",
+      [user.id]
+    );
+    return json(res, 200, { user: {
+      id: account.rows[0].id,
+      email: account.rows[0].email,
+      emailVerified: Boolean(account.rows[0].email_verified_at),
+      createdAt: account.rows[0].created_at
+    }});
+  }
+
+  if (path === "/v1/billing/subscription" && req.method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const result = await pool.query(
+      "SELECT plan_id,status,current_period_end,provider_customer_id,provider_subscription_id FROM subscriptions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1",
+      [user.id]
+    );
+    return json(res, 200, { subscription: result.rows[0] || null });
   }
 
   if (path === "/v1/plans" && req.method === "GET") {
@@ -570,6 +589,8 @@ async function route(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     if (!requireOriginAndCsrf(req, res)) return;
+    const verified = await pool.query("SELECT email_verified_at FROM users WHERE id=$1", [user.id]);
+    if (!verified.rows[0]?.email_verified_at) return json(res, 403, { error: "Email verification required" });
     const input = await bodyJson(req);
     const plan = getPlan(input.plan);
     if (!plan) return json(res, 400, { error: "Unknown plan" });
@@ -601,6 +622,41 @@ async function route(req, res) {
     }
   }
 
+  if (path === "/v1/billing/portal" && req.method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (!requireOriginAndCsrf(req, res)) return;
+    const result = await pool.query(
+      "SELECT provider_customer_id FROM subscriptions WHERE user_id=$1 AND status IN ('active','trialing','past_due') AND provider_customer_id IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+      [user.id]
+    );
+    if (!result.rows[0]) return json(res, 404, { error: "No managed billing account found" });
+    try {
+      const portal = await createCustomerPortal({ customerId: result.rows[0].provider_customer_id });
+      return json(res, 200, { url: portal.url });
+    } catch (error) {
+      return json(res, 502, { error: error.message });
+    }
+  }
+
+  if (path === "/v1/billing/cancel" && req.method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (!requireOriginAndCsrf(req, res)) return;
+    const result = await pool.query(
+      "SELECT provider_subscription_id FROM subscriptions WHERE user_id=$1 AND status IN ('active','trialing','past_due') AND provider_subscription_id IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+      [user.id]
+    );
+    if (!result.rows[0]) return json(res, 404, { error: "No active subscription found" });
+    try {
+      const updated = await cancelSubscriptionAtPeriodEnd({ subscriptionId: result.rows[0].provider_subscription_id });
+      await audit(user.id, null, "billing.cancellation_requested", { subscriptionId: result.rows[0].provider_subscription_id });
+      return json(res, 200, { cancelAtPeriodEnd: Boolean(updated.cancel_at_period_end) });
+    } catch (error) {
+      return json(res, 502, { error: error.message });
+    }
+  }
+
   if (path === "/v1/webhooks/stripe" && req.method === "POST") {
     const payload = await rawBody(req);
     const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -627,9 +683,9 @@ async function route(req, res) {
       return json(res, 400, { error: "Valid agent id and 32+ character secret required" });
     }
     await pool.query(
-      "INSERT INTO agents(id,name,secret_hash,node_capacity,last_seen_at) VALUES($1,$2,$3,$4,now()) " +
-      "ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,secret_hash=EXCLUDED.secret_hash,node_capacity=EXCLUDED.node_capacity,last_seen_at=now()",
-      [id, name, hashAgentSecret(secret), JSON.stringify(input.capacity || {})]
+      "INSERT INTO agents(id,name,secret_hash,encrypted_secret,node_capacity,last_seen_at) VALUES($1,$2,$3,$4,$5,now()) " +
+      "ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,secret_hash=EXCLUDED.secret_hash,encrypted_secret=EXCLUDED.encrypted_secret,node_capacity=EXCLUDED.node_capacity,last_seen_at=now()",
+      [id, name, hashAgentSecret(secret), encryptSecret(secret), JSON.stringify(input.capacity || {})]
     );
     return json(res, 201, { id, registered: true });
   }
@@ -639,12 +695,11 @@ async function route(req, res) {
     const agentId = String(req.headers["x-agent-id"] || "");
     const timestamp = String(req.headers["x-agent-timestamp"] || "");
     const signature = String(req.headers["x-agent-signature"] || "");
-    const agent = await pool.query("SELECT secret_hash FROM agents WHERE id=$1", [agentId]);
-    const secret = String(req.headers["x-agent-secret"] || "");
-    if (!agent.rows[0] || !secret || agent.rows[0].secret_hash !== hashAgentSecret(secret) ||
-        !verifyAgentHmac(secret, timestamp, payload, signature)) {
-      return json(res, 401, { error: "Agent authentication failed" });
-    }
+    const agent = await pool.query("SELECT encrypted_secret FROM agents WHERE id=$1", [agentId]);
+    if (!agent.rows[0]?.encrypted_secret) return json(res, 401, { error: "Agent authentication failed" });
+    let secret;
+    try { secret = decryptSecret(agent.rows[0].encrypted_secret); } catch { return json(res, 401, { error: "Agent authentication failed" }); }
+    if (!verifyAgentHmac(secret, timestamp, payload, signature)) return json(res, 401, { error: "Agent authentication failed" });
     await pool.query("UPDATE agents SET last_seen_at=now() WHERE id=$1", [agentId]);
     return json(res, 200, { ok: true });
   }
@@ -654,12 +709,11 @@ async function route(req, res) {
     const agentId = String(req.headers["x-agent-id"] || "");
     const timestamp = String(req.headers["x-agent-timestamp"] || "");
     const signature = String(req.headers["x-agent-signature"] || "");
-    const agent = await pool.query("SELECT secret_hash FROM agents WHERE id=$1", [agentId]);
-    const secret = process.env.AGENT_SECRET_PREFIX ? process.env.AGENT_SECRET_PREFIX + agentId : "";
-    if (!agent.rows[0] || !secret || agent.rows[0].secret_hash !== hashAgentSecret(secret) ||
-        !verifyAgentHmac(secret, timestamp, payload, signature)) {
-      return json(res, 401, { error: "Agent authentication failed" });
-    }
+    const agent = await pool.query("SELECT encrypted_secret FROM agents WHERE id=$1", [agentId]);
+    if (!agent.rows[0]?.encrypted_secret) return json(res, 401, { error: "Agent authentication failed" });
+    let secret;
+    try { secret = decryptSecret(agent.rows[0].encrypted_secret); } catch { return json(res, 401, { error: "Agent authentication failed" }); }
+    if (!verifyAgentHmac(secret, timestamp, payload, signature)) return json(res, 401, { error: "Agent authentication failed" });
 
     const job = await withTransaction(async client => {
       const locked = await client.query(
@@ -703,10 +757,7 @@ async function route(req, res) {
 
     if (!job) { res.writeHead(204); return res.end(); }
     const body = JSON.stringify(job);
-    const signed = signAgentPayload(
-      process.env.AGENT_SECRET_PREFIX + agentId,
-      body
-    );
+    const signed = signAgentPayload(secret, body);
     return json(res, 200, { job, signature: signed });
   }
 
@@ -716,12 +767,11 @@ async function route(req, res) {
     const agentId = String(req.headers["x-agent-id"] || "");
     const timestamp = String(req.headers["x-agent-timestamp"] || "");
     const signature = String(req.headers["x-agent-signature"] || "");
-    const agent = await pool.query("SELECT secret_hash FROM agents WHERE id=$1", [agentId]);
-    const secret = process.env.AGENT_SECRET_PREFIX ? process.env.AGENT_SECRET_PREFIX + agentId : "";
-    if (!agent.rows[0] || !secret || agent.rows[0].secret_hash !== hashAgentSecret(secret) ||
-        !verifyAgentHmac(secret, timestamp, body, signature)) {
-      return json(res, 401, { error: "Agent authentication failed" });
-    }
+    const agent = await pool.query("SELECT encrypted_secret FROM agents WHERE id=$1", [agentId]);
+    if (!agent.rows[0]?.encrypted_secret) return json(res, 401, { error: "Agent authentication failed" });
+    let secret;
+    try { secret = decryptSecret(agent.rows[0].encrypted_secret); } catch { return json(res, 401, { error: "Agent authentication failed" }); }
+    if (!verifyAgentHmac(secret, timestamp, body, signature)) return json(res, 401, { error: "Agent authentication failed" });
     const jobId = String(requestBody.jobId || "");
     const ok = Boolean(requestBody.ok);
     await pool.query(
