@@ -1,0 +1,11 @@
+# Local secrets
+api/.env
+api/.env.local
+api/.env.production
+*.pem
+*.key
+
+# Dependencies and local runtime data
+api/node_modules/
+npm-debug.log*
+.DS_Store
