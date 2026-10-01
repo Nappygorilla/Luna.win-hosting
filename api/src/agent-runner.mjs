@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { signAgentPayload, verifyAgentHmac } from "./security.mjs";
-import { launchContainer, stopContainer, restartContainer } from "./agent.mjs";
+import { launchContainer, stopContainer, restartContainer, readContainerLogs } from "./agent.mjs";
 
 const API_URL = String(process.env.LUNA_API_URL || "").replace(/\/$/, "");
 const AGENT_ID = String(process.env.LUNA_AGENT_ID || "");
@@ -59,11 +59,24 @@ async function runJob(job) {
     return { ok: true, status: "running", serviceId: service.id };
   }
 
+  if (job.action === "logs") {
+    const logs = await readContainerLogs(name, 200);
+    return { ok: true, status: "running", serviceId: service.id, logs };
+  }
+
   throw new Error("Unsupported job action: " + job.action);
 }
 
 async function postResult(result, jobId) {
-  const payload = { jobId, serviceId: result.serviceId, ok: result.ok, status: result.status, containerId: result.containerId };
+  const payload = {
+    jobId,
+    serviceId: result.serviceId,
+    ok: result.ok,
+    status: result.status,
+    containerId: result.containerId,
+    logs: typeof result.logs === "string" ? result.logs.slice(-200000) : undefined,
+    error: result.error
+  };
   const body = JSON.stringify(payload);
   const signed = signAgentPayload(AGENT_SECRET, body);
   const response = await fetch(API_URL + "/v1/internal/agent/jobs/result", {
