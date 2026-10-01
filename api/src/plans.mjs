@@ -1,8 +1,26 @@
-export const PLANS = Object.freeze({
-  starter: Object.freeze({ id: "starter", name: "Starter", priceMonthlyCents: 299, ramMb: 512, vcpu: 1, storageGb: 5, runtimeFamilies: ["nodejs", "python"], restartPolicy: "on-failure-with-backoff" }),
-  pro: Object.freeze({ id: "pro", name: "Pro", priceMonthlyCents: 699, ramMb: 2048, vcpu: 2, storageGb: 20, runtimeFamilies: ["nodejs", "python"], restartPolicy: "on-failure-with-backoff" }),
-  scale: Object.freeze({ id: "scale", name: "Scale", priceMonthlyCents: 1499, ramMb: 4096, vcpu: 4, storageGb: 40, runtimeFamilies: ["nodejs", "python"], restartPolicy: "on-failure-with-backoff" })
-});
+import { readFileSync } from "node:fs";
+
+const source = JSON.parse(
+  readFileSync(new URL("../../config/plans.json", import.meta.url), "utf8")
+);
+
+export const PLANS = Object.freeze(
+  Object.fromEntries(
+    source.plans.map(plan => [
+      plan.id,
+      Object.freeze({
+        id: plan.id,
+        name: plan.name,
+        priceMonthlyCents: Math.round(Number(plan.price_monthly) * 100),
+        ramMb: plan.ram_mb,
+        vcpu: plan.vcpu,
+        storageGb: plan.storage_gb,
+        runtimeFamilies: plan.runtime_families,
+        restartPolicy: plan.restart_policy
+      })
+    ])
+  )
+);
 
 export function getPlan(id) {
   return PLANS[String(id || "").toLowerCase()] || null;
@@ -20,5 +38,7 @@ export function enforcePlanLimits(plan, requested = {}) {
 }
 
 export function validateRuntime(plan, runtime) {
-  if (!plan || !plan.runtimeFamilies.includes(runtime)) throw new Error("Unsupported runtime for plan");
+  if (!plan || !plan.runtimeFamilies.includes(runtime)) {
+    throw new Error("Unsupported runtime for plan");
+  }
 }
