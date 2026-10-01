@@ -293,3 +293,10 @@ details p { color:#777; max-width:650px; line-height:1.8; padding:0 0 24px; marg
 .mini-link { display:inline-flex; align-items:center; }
 @media (max-width: 820px) { .panel-heading { flex-direction:column; align-items:start; } .panel-grid { grid-template-columns:1fr; } .resource-grid { grid-template-columns:repeat(2,1fr); } }
 @media (max-width: 560px) { .panel-nav .api-badge { display:none; } .panel-shell { padding-top:48px; } }
+
+/* Client setup flow */
+.selection-card { display:flex; justify-content:space-between; align-items:center; gap:30px; margin-bottom:14px; }
+.selection-card h2 { font-size:28px; }
+.selection-card p { color:#727272; font-size:12px; margin:8px 0 0; }
+.selection-actions { display:flex; gap:9px; flex-wrap:wrap; }
+@media (max-width: 700px) { .selection-card { align-items:flex-start; flex-direction:column; } }
