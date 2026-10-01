@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text NOT NULL UNIQUE,
   password_hash text NOT NULL,
+  email_verified_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -70,6 +71,7 @@ CREATE TABLE IF NOT EXISTS agents (
   id text PRIMARY KEY,
   name text NOT NULL,
   secret_hash text NOT NULL,
+  encrypted_secret text,
   node_capacity jsonb NOT NULL DEFAULT '{}'::jsonb,
   last_seen_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
