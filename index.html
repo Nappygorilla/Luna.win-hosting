@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="Luna Hosting — simple, fast Discord bot hosting with clean controls and always-on uptime.">
+  <title>Luna Hosting — Discord Bot Hosting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a class="brand" href="#" aria-label="Luna Hosting home">
+        <span class="brand-mark" aria-hidden="true">
+          <span class="moon"></span>
+        </span>
+        <span>Luna<span class="brand-dot">.</span>win</span>
+      </a>
+
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-links" id="nav-links">
+        <a href="#features">Features</a>
+        <a href="#plans">Plans</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a class="nav-login" href="#start">Client panel</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero container">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="status-dot"></span> Discord bot hosting, simplified</div>
+        <h1>Keep your bot online.<br><span class="muted">Build without limits.</span></h1>
+        <p class="hero-text">Fast, affordable hosting for Discord bots. Upload your project, set your environment variables, and let Luna keep it running around the clock.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#plans">View plans <span>↗</span></a>
+          <a class="button button-secondary" href="#how-it-works">See how it works</a>
+        </div>
+        <div class="hero-proof">
+          <div><strong>24/7</strong><span>always-on hosting</span></div>
+          <div><strong>1-click</strong><span>deploy workflow</span></div>
+          <div><strong>0 bloat</strong><span>clean control panel</span></div>
+        </div>
+      </div>
+
+      <div class="hero-terminal" aria-label="Luna Hosting dashboard preview">
+        <div class="terminal-top">
+          <div class="terminal-dots"><i></i><i></i><i></i></div>
+          <span>luna-control</span>
+          <span class="terminal-state"><span class="status-dot"></span> Online</span>
+        </div>
+        <div class="terminal-body">
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span class="metric-label">Bot status</span>
+              <strong class="online-text">● Online</strong>
+              <small>Uptime 99.99%</small>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Memory</span>
+              <strong>142 MB</strong>
+              <div class="meter"><span style="width:28%"></span></div>
+              <small>of 512 MB</small>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">CPU</span>
+              <strong>8.4%</strong>
+              <div class="meter"><span style="width:18%"></span></div>
+              <small>of 100%</small>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Deploys</span>
+              <strong>18</strong>
+              <small>this month</small>
+            </article>
+          </div>
+          <div class="terminal-log">
+            <div><span>09:14:02</span> Pulling latest commit… <b>done</b></div>
+            <div><span>09:14:03</span> Installing dependencies… <b>done</b></div>
+            <div><span>09:14:08</span> Starting <em>discord-bot</em>… <b>online</b></div>
+            <div><span>09:14:09</span> Connected to Discord gateway.</div>
+          </div>
+          <div class="terminal-footer">
+            <div><span class="pulse"></span> Live logs</div>
+            <button type="button" class="mini-button">Restart bot</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust-strip">
+      <div class="container trust-inner">
+        <span>MADE FOR BOT DEVELOPERS</span>
+        <div class="trust-items">
+          <span>Node.js</span><span>Python</span><span>Discord.js</span><span>discord.py</span><span>GitHub</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container" id="features">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">WHY LUNA</span>
+          <h2>Everything you need.<br><span class="muted">Nothing you don't.</span></h2>
+        </div>
+        <p>Designed around the boring parts of hosting so you can spend your time shipping commands, dashboards, automations, and communities.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card feature-large">
+          <div class="feature-icon">01</div>
+          <h3>Deploy in minutes</h3>
+          <p>Bring your existing bot project and get it online without fighting through a complicated server setup.</p>
+          <div class="feature-visual deploy-visual">
+            <span>GitHub repository</span><b>→</b><span>Luna container</span><b>→</b><span>Discord gateway</span>
+          </div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon">02</div>
+          <h3>Always-on runtime</h3>
+          <p>Keep your bot available while you sleep, game, or work on the next update.</p>
+          <div class="sparkline" aria-hidden="true">
+            <span style="height:22%"></span><span style="height:38%"></span><span style="height:31%"></span><span style="height:58%"></span><span style="height:49%"></span><span style="height:76%"></span><span style="height:69%"></span><span style="height:92%"></span>
+          </div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon">03</div>
+          <h3>Simple control panel</h3>
+          <p>Logs, restarts, environment variables, usage, and deployment controls in one focused workspace.</p>
+          <div class="control-row"><span>CPU usage</span><strong>12%</strong></div>
+          <div class="control-row"><span>Memory</span><strong>142 MB</strong></div>
+          <div class="control-row"><span>Status</span><strong class="online-text">Online</strong></div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon">04</div>
+          <h3>Developer friendly</h3>
+          <p>Run common Node.js and Python Discord stacks with a workflow that feels familiar from day one.</p>
+          <div class="code-chip"><span>npm run start</span><span>python bot.py</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="plans">
+      <div class="container">
+        <div class="section-heading centered">
+          <div>
+            <span class="section-kicker">PLANS</span>
+            <h2>Pick your orbit.</h2>
+          </div>
+          <p>Start small and scale when your bot needs more room.</p>
+        </div>
+
+        <div class="plan-grid">
+          <article class="plan-card">
+            <div class="plan-top"><span>Starter</span><span class="plan-tag">For testing</span></div>
+            <div class="price"><span>$</span>2.99<small>/mo</small></div>
+            <p class="plan-copy">A lightweight home for a small bot or private project.</p>
+            <div class="plan-divider"></div>
+            <ul class="plan-list">
+              <li>512 MB RAM</li>
+              <li>1 shared vCPU</li>
+              <li>5 GB storage</li>
+              <li>Automatic restarts</li>
+              <li>Basic logs</li>
+            </ul>
+            <a class="button button-secondary full-width" href="#start">Choose Starter</a>
+          </article>
+
+          <article class="plan-card featured-plan">
+            <div class="featured-badge">Most popular</div>
+            <div class="plan-top"><span>Pro</span><span class="plan-tag">For serious bots</span></div>
+            <div class="price"><span>$</span>6.99<small>/mo</small></div>
+            <p class="plan-copy">More headroom for growing communities, music, moderation, and automation.</p>
+            <div class="plan-divider"></div>
+            <ul class="plan-list">
+              <li>2 GB RAM</li>
+              <li>2 vCPU</li>
+              <li>20 GB storage</li>
+              <li>Priority deployment</li>
+              <li>Advanced logs</li>
+            </ul>
+            <a class="button button-primary full-width" href="#start">Choose Pro <span>↗</span></a>
+          </article>
+
+          <article class="plan-card">
+            <div class="plan-top"><span>Scale</span><span class="plan-tag">For high traffic</span></div>
+            <div class="price"><span>$</span>14.99<small>/mo</small></div>
+            <p class="plan-copy">Extra compute for busy bots, dashboards, APIs, and larger workloads.</p>
+            <div class="plan-divider"></div>
+            <ul class="plan-list">
+              <li>4 GB RAM</li>
+              <li>4 vCPU</li>
+              <li>40 GB storage</li>
+              <li>Priority support</li>
+              <li>Usage analytics</li>
+            </ul>
+            <a class="button button-secondary full-width" href="#start">Choose Scale</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container" id="how-it-works">
+      <div class="section-heading centered">
+        <div>
+          <span class="section-kicker">HOW IT WORKS</span>
+          <h2>From code to online.</h2>
+        </div>
+        <p>Three straightforward steps. No VPS maintenance checklist required.</p>
+      </div>
+
+      <div class="steps">
+        <article class="step">
+          <span class="step-number">01</span>
+          <h3>Create your bot</h3>
+          <p>Choose a plan and create your hosting space for the project.</p>
+        </article>
+        <article class="step">
+          <span class="step-number">02</span>
+          <h3>Upload your code</h3>
+          <p>Connect your repository or upload your project files, then set your secrets.</p>
+        </article>
+        <article class="step">
+          <span class="step-number">03</span>
+          <h3>Go online</h3>
+          <p>Start the bot and monitor its status, logs, and resource usage from the panel.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="faq">
+      <div class="container faq-layout">
+        <div>
+          <span class="section-kicker">FAQ</span>
+          <h2>Questions,<br><span class="muted">answered.</span></h2>
+          <p>Need something specific? Point customers to your support Discord or add your own contact route here.</p>
+        </div>
+        <div class="faq-list">
+          <details open>
+            <summary>What can I host?</summary>
+            <p>Luna is designed for Discord bots and bot-adjacent Node.js or Python workloads. Your exact supported runtimes should be defined by the final hosting backend.</p>
+          </details>
+          <details>
+            <summary>Can I use environment variables?</summary>
+            <p>Yes — the control panel is designed to support secrets such as bot tokens without putting them directly into source files.</p>
+          </details>
+          <details>
+            <summary>Do plans include backups?</summary>
+            <p>Backups are not represented as a guaranteed feature on this landing page. Add the exact backup policy once your infrastructure is finalized.</p>
+          </details>
+          <details>
+            <summary>How do I get started?</summary>
+            <p>Use the client panel link to create your hosting space, or connect your signup flow to the “Get started” button below.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container" id="start">
+      <div class="cta">
+        <div>
+          <span class="section-kicker">READY TO LAUNCH?</span>
+          <h2>Give your bot a place<br>to call home.</h2>
+          <p>Replace this button with your real signup or checkout route when the hosting backend is ready.</p>
+        </div>
+        <a class="button button-primary" href="mailto:hello@luna.win">Get started <span>↗</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand" href="#">
+          <span class="brand-mark" aria-hidden="true"><span class="moon"></span></span>
+          <span>Luna<span class="brand-dot">.</span>win</span>
+        </a>
+        <p>Simple hosting for Discord bots and the people who build them.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#features">Features</a>
+        <a href="#plans">Plans</a>
+        <a href="#faq">FAQ</a>
+        <a href="mailto:hello@luna.win">Contact</a>
+      </div>
+      <div class="footer-meta">
+        <span>© <span id="year"></span> Luna Hosting</span>
+        <span>Built for the Discord community</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
