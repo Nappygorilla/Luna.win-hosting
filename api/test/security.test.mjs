@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { hashPassword, verifyPassword, encryptSecret, decryptSecret, signAgentPayload, verifyAgentHmac } from "../src/security.mjs";
 import { getPlan, enforcePlanLimits, validateRuntime } from "../src/plans.mjs";
+import { dockerArgsForService } from "../src/agent.mjs";
 import { verifyStripeSignature } from "../src/server.mjs";
 import { createHmac } from "node:crypto";
 
@@ -30,6 +31,19 @@ test("agent signatures verify and plan limits are enforced", () => {
   );
   assert.throws(() => enforcePlanLimits(plan, { ramMb: 513, vcpu: 1, storageGb: 5 }));
   assert.throws(() => validateRuntime(plan, "ruby"));
+});
+
+test("agent container policy contains CPU, memory, storage, PID and privilege limits", () => {
+  const args = dockerArgsForService({ id: "abc_123", planId: "starter", runtime: "nodejs", ramMb: 512, vcpu: 1, storageGb: 5, image: "luna/node:24" });
+  assert.ok(args.includes("--memory"));
+  assert.ok(args.includes("512m"));
+  assert.ok(args.includes("--cpus"));
+  assert.ok(args.includes("1"));
+  assert.ok(args.includes("--storage-opt"));
+  assert.ok(args.includes("size=5G"));
+  assert.ok(args.includes("--pids-limit"));
+  assert.ok(args.includes("--cap-drop"));
+  assert.ok(args.includes("ALL"));
 });
 
 test("stripe signature verifier accepts a valid signed payload and rejects tampering", () => {
