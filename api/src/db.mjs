@@ -11,9 +11,15 @@ export const pool = new Pool({
 });
 
 export async function initDb() {
-  const sqlPath = path.resolve(new URL("../sql/001_init.sql", import.meta.url).pathname);
-  const sql = await fs.readFile(sqlPath, "utf8");
-  await pool.query(sql);
+  const dir = path.resolve(new URL("../sql", import.meta.url).pathname);
+  const names = (await fs.readdir(dir))
+    .filter(name => /^\d+_.*\.sql$/.test(name))
+    .sort();
+
+  for (const name of names) {
+    const sql = await fs.readFile(path.join(dir, name), "utf8");
+    await pool.query(sql);
+  }
 }
 
 export async function withTransaction(fn) {
