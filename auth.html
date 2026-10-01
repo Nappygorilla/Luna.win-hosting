@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="Create or sign in to your Luna Hosting account.">
+  <title>Account — Luna.win</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="auth-page">
+  <div class="noise" aria-hidden="true"></div>
+  <header class="site-header">
+    <nav class="nav container">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"><span class="moon"></span></span>
+        <span>Luna<span class="brand-dot">.</span>win</span>
+      </a>
+      <a class="nav-login" href="index.html">Back to site</a>
+    </nav>
+  </header>
+
+  <main class="auth-shell container">
+    <section class="auth-card">
+      <div class="auth-copy">
+        <span class="section-kicker">LUNA ACCOUNT</span>
+        <h1 id="auth-title">Create your account.</h1>
+        <p id="auth-copy">Your plan selection will be carried into the secure checkout flow.</p>
+      </div>
+
+      <form id="auth-form" novalidate>
+        <label>Email<input id="email" name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input id="password" name="password" type="password" minlength="10" autocomplete="new-password" required></label>
+        <div class="form-actions">
+          <button class="button button-primary" id="submit-button" type="submit">Create account</button>
+          <button class="button button-secondary" id="mode-button" type="button">Sign in instead</button>
+        </div>
+        <p class="form-message" id="form-message" role="status"></p>
+      </form>
+
+      <div class="selected-plan" id="selected-plan">
+        <span class="section-kicker">SELECTED PLAN</span>
+        <strong id="plan-name">Starter</strong>
+        <span id="plan-details">512 MB RAM · 1 vCPU · 5 GB storage</span>
+      </div>
+    </section>
+  </main>
+  <script src="auth.js"></script>
+</body>
+</html>
