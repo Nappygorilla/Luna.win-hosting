@@ -7,12 +7,31 @@ function priceForPlan(planId) {
   return prices[planId] || "";
 }
 
-export async function createSubscriptionCheckout({ userId, email, planId, orderId }) {
+async function stripeRequest(path, form) {
   const key = process.env.STRIPE_SECRET_KEY || "";
+  if (!key) throw new Error("Stripe is not configured");
+  const response = await fetch("https://api.stripe.com/v1/" + path, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + key,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: form
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error((data && data.error && data.error.message) || "Stripe request failed");
+    error.statusCode = response.status;
+    throw error;
+  }
+  return data;
+}
+
+export async function createSubscriptionCheckout({ userId, email, planId, orderId }) {
   const baseUrl = process.env.PUBLIC_BASE_URL || "";
   const price = priceForPlan(planId);
 
-  if (process.env.ENABLE_PAID_CHECKOUT !== "true" || !key || !price || !baseUrl) {
+  if (process.env.ENABLE_PAID_CHECKOUT !== "true" || !baseUrl || !price) {
     const error = new Error("Paid checkout is not enabled");
     error.code = "CHECKOUT_DISABLED";
     throw error;
@@ -32,21 +51,21 @@ export async function createSubscriptionCheckout({ userId, email, planId, orderI
   form.set("subscription_data[metadata][user_id]", userId);
   form.set("subscription_data[metadata][plan_id]", planId);
   form.set("subscription_data[metadata][order_id]", orderId);
+  return stripeRequest("checkout/sessions", form);
+}
 
-  const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + key,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: form
-  });
+export async function createCustomerPortal({ customerId }) {
+  const baseUrl = process.env.PUBLIC_BASE_URL || "";
+  if (!customerId || !baseUrl) throw new Error("Billing portal is not configured");
+  const form = new URLSearchParams();
+  form.set("customer", customerId);
+  form.set("return_url", baseUrl + "/panel.html");
+  return stripeRequest("billing_portal/sessions", form);
+}
 
-  const data = await response.json();
-  if (!response.ok) {
-    const error = new Error((data && data.error && data.error.message) || "Stripe checkout session creation failed");
-    error.statusCode = response.status;
-    throw error;
-  }
-  return data;
+export async function cancelSubscriptionAtPeriodEnd({ subscriptionId }) {
+  if (!subscriptionId) throw new Error("Subscription is not configured");
+  const form = new URLSearchParams();
+  form.set("cancel_at_period_end", "true");
+  return stripeRequest("subscriptions/" + encodeURIComponent(subscriptionId), form);
 }
