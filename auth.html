@@ -4,11 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#050505">
-  <meta name="description" content="Create or sign in to your Luna Hosting account.">
+  <meta name="description" content="Create, sign in, verify, or recover your Luna Hosting account.">
   <title>Account — Luna.win</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="auth-page">
@@ -32,11 +31,21 @@
       </div>
 
       <form id="auth-form" novalidate>
-        <label>Email<input id="email" name="email" type="email" autocomplete="email" required></label>
-        <label>Password<input id="password" name="password" type="password" minlength="10" autocomplete="new-password" required></label>
+        <label id="email-label">Email<input id="email" name="email" type="email" autocomplete="email" required></label>
+        <label id="password-label">Password<input id="password" name="password" type="password" minlength="10" autocomplete="new-password"></label>
+        <div id="verify-token-wrap" hidden>
+          <label>Verification token<input id="verify-token" type="text" autocomplete="off"></label>
+        </div>
+        <div id="reset-token-wrap" hidden>
+          <label>Reset token<input id="reset-token" type="text" autocomplete="off"></label>
+        </div>
         <div class="form-actions">
           <button class="button button-primary" id="submit-button" type="submit">Create account</button>
           <button class="button button-secondary" id="mode-button" type="button">Sign in instead</button>
+        </div>
+        <div class="auth-links" id="auth-links">
+          <button type="button" class="text-button" data-mode="forgot">Forgot password?</button>
+          <button type="button" class="text-button" data-mode="verify">Verify email</button>
         </div>
         <p class="form-message" id="form-message" role="status"></p>
       </form>
