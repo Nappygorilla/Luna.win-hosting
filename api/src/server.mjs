@@ -565,7 +565,7 @@ async function route(req, res) {
     const timestamp = String(req.headers["x-agent-timestamp"] || "");
     const signature = String(req.headers["x-agent-signature"] || "");
     const agent = await pool.query("SELECT secret_hash FROM agents WHERE id=$1", [agentId]);
-    const secret = process.env.AGENT_SECRET_PREFIX ? process.env.AGENT_SECRET_PREFIX + agentId : "";
+    const secret = String(req.headers["x-agent-secret"] || "");
     if (!agent.rows[0] || !secret || agent.rows[0].secret_hash !== hashAgentSecret(secret) ||
         !verifyAgentHmac(secret, timestamp, payload, signature)) {
       return json(res, 401, { error: "Agent authentication failed" });
@@ -626,7 +626,7 @@ async function route(req, res) {
       return jobPayload;
     });
 
-    if (!job) return json(res, 204, {});
+    if (!job) { res.writeHead(204); return res.end(); }
     const body = JSON.stringify(job);
     const signed = signAgentPayload(
       process.env.AGENT_SECRET_PREFIX + agentId,
