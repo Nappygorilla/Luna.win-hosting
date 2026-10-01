@@ -34,3 +34,18 @@ The public API should enqueue an authenticated service action. The VPS agent sho
 The API should resolve the customer's active plan to a resource policy. The agent should reject container updates that exceed that policy.
 
 The values shown in `config/plans.json` are the current product proposal, not proof that the infrastructure already enforces them.
+
+## Additional account and operations endpoints
+
+- POST /v1/auth/csrf
+- POST /v1/auth/verify-email
+- POST /v1/auth/resend-verification
+- POST /v1/auth/request-password-reset
+- POST /v1/auth/reset-password
+- GET /v1/billing/subscription
+- POST /v1/billing/portal
+- POST /v1/billing/cancel
+- GET /v1/services/:id/logs
+- POST /v1/services/:id/actions/logs
+
+Agent requests use X-Agent-Id, X-Agent-Timestamp, and X-Agent-Signature. The raw agent secret is not sent with normal heartbeat, job-claim, or job-result requests.
