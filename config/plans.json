@@ -10,7 +10,10 @@
       "vcpu": 1,
       "storage_gb": 5,
       "restart_policy": "on-failure-with-backoff",
-      "runtime_families": ["nodejs", "python"]
+      "runtime_families": [
+        "nodejs",
+        "python"
+      ]
     },
     {
       "id": "pro",
@@ -20,7 +23,10 @@
       "vcpu": 2,
       "storage_gb": 20,
       "restart_policy": "on-failure-with-backoff",
-      "runtime_families": ["nodejs", "python"]
+      "runtime_families": [
+        "nodejs",
+        "python"
+      ]
     },
     {
       "id": "scale",
@@ -30,7 +36,10 @@
       "vcpu": 4,
       "storage_gb": 40,
       "restart_policy": "on-failure-with-backoff",
-      "runtime_families": ["nodejs", "python"]
+      "runtime_families": [
+        "nodejs",
+        "python"
+      ]
     }
   ]
 }
