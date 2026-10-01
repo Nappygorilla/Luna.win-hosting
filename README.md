@@ -14,6 +14,6 @@ Public website and client-panel frontend for Luna.win Discord bot hosting.
 
 ## Deploy
 
-This is a static site and can be published with GitHub Pages.
+This repository contains the public frontend and the first Luna API/service foundation. The static frontend can be published with GitHub Pages, while the API runs separately against PostgreSQL.
 
-The frontend deliberately does not claim live infrastructure telemetry or successful backend actions until the Luna API is connected. Real paid provisioning should remain disabled until the API, VPS agent, container isolation, billing, backups, and cancellation handling are implemented.
+The frontend does not claim live infrastructure telemetry. Demo values remain clearly labeled. Paid checkout is disabled by default and provisioning remains closed until production billing, agent deployment, backup/restore, cancellation, and host quota controls are tested.
