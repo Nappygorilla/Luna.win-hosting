@@ -315,3 +315,29 @@ details p { color:#777; max-width:650px; line-height:1.8; padding:0 0 24px; marg
 .selected-plan { border-top:1px solid var(--line); margin-top:25px; padding-top:18px; display:grid; gap:4px; }
 .selected-plan strong { font-size:18px; }
 .selected-plan span:last-child { color:#666; font-size:11px; }
+
+/* Multi-service dashboard */
+.dashboard-layout { display:grid; grid-template-columns:300px 1fr; gap:14px; align-items:start; }
+.service-list-card { position:sticky; top:96px; }
+.service-list { display:grid; gap:7px; max-height:620px; overflow:auto; }
+.service-item { width:100%; border:1px solid transparent; background:transparent; color:#fff; border-radius:12px; padding:12px; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; }
+.service-item:hover { border-color:var(--line); background:rgba(255,255,255,.025); }
+.service-item.selected { border-color:var(--line-strong); background:rgba(255,255,255,.05); }
+.service-item-main { display:grid; gap:3px; min-width:0; }
+.service-item-main strong { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.service-item-main small { color:#666; font-size:10px; }
+.service-item-status { color:#aaa; font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
+.service-empty { color:#666; font-size:11px; line-height:1.7; padding:16px 4px; }
+.service-workspace { min-width:0; }
+.log-entry { border-bottom:1px solid var(--line); padding:10px 0; }
+.log-entry:last-child { border-bottom:0; }
+.log-entry > span { color:#555; display:block; font-size:9px; margin-bottom:5px; }
+.log-entry pre { margin:0; color:#aaa; white-space:pre-wrap; word-break:break-word; font:10px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.log-empty { color:#666; font-size:11px; padding:25px 0; text-align:center; }
+.billing-card { margin-top:14px; display:flex; justify-content:space-between; align-items:center; gap:30px; }
+.billing-card h2 { font-size:26px; }
+.billing-card p { margin:8px 0 0; color:#777; font-size:12px; }
+.billing-actions { display:flex; gap:9px; flex-wrap:wrap; }
+.billing-actions .button:disabled { opacity:.38; cursor:not-allowed; transform:none; }
+@media (max-width: 940px) { .dashboard-layout { grid-template-columns:1fr; } .service-list-card { position:static; } .service-list { max-height:none; grid-template-columns:repeat(2,minmax(0,1fr)); } .billing-card { align-items:flex-start; flex-direction:column; } }
+@media (max-width: 620px) { .service-list { grid-template-columns:1fr; } .billing-actions, .selection-actions { width:100%; } .billing-actions .button, .selection-actions .button { flex:1; } }
