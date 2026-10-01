@@ -14,7 +14,8 @@ import {
   signAgentPayload
 } from "./security.mjs";
 import { getPlan, enforcePlanLimits, validateRuntime, PLANS } from "./plans.mjs";
-import { createSubscriptionCheckout } from "./billing.mjs";
+import { createSubscriptionCheckout, createCustomerPortal, cancelSubscriptionAtPeriodEnd } from "./billing.mjs";
+import { sendTransactionalEmail } from "./mailer.mjs";
 
 const PORT = Number(process.env.PORT || 8080);
 const COOKIE = process.env.SESSION_COOKIE_NAME || "luna_session";
@@ -212,6 +213,32 @@ async function assignJob(serviceId, action, payload = {}) {
   return result.rows[0].id;
 }
 
+async function issueToken(table, userId, minutes) {
+  const token = newSessionToken();
+  await pool.query("DELETE FROM " + table + " WHERE user_id=$1 AND used_at IS NULL", [userId]);
+  await pool.query(
+    "INSERT INTO " + table + "(user_id,token_hash,expires_at) VALUES($1,$2,now()+($3 || ' minutes')::interval)",
+    [userId, hashSessionToken(token), String(minutes)]
+  );
+  return token;
+}
+
+async function sendVerificationEmail(user) {
+  const token = await issueToken("email_verification_tokens", user.id, Number(process.env.EMAIL_TOKEN_TTL_MINUTES || 30));
+  const base = process.env.PUBLIC_BASE_URL || "";
+  const path = process.env.VERIFY_EMAIL_PATH || "/auth.html?mode=verify";
+  const url = base + path + (path.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(token);
+  return sendTransactionalEmail({ to: user.email, subject: "Verify your Luna Hosting email", text: "Verify your Luna Hosting account: " + url });
+}
+
+async function sendPasswordResetEmail(user) {
+  const token = await issueToken("password_reset_tokens", user.id, Number(process.env.RESET_TOKEN_TTL_MINUTES || 30));
+  const base = process.env.PUBLIC_BASE_URL || "";
+  const path = process.env.RESET_PASSWORD_PATH || "/auth.html?mode=reset";
+  const url = base + path + (path.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(token);
+  return sendTransactionalEmail({ to: user.email, subject: "Reset your Luna Hosting password", text: "Reset your Luna Hosting password: " + url });
+}
+
 async function processStripeEvent(event) {
   const type = event && event.type;
   const object = event && event.data && event.data.object;
@@ -313,12 +340,13 @@ async function route(req, res) {
     }
     try {
       const result = await pool.query(
-        "INSERT INTO users(email,password_hash) VALUES($1,$2) RETURNING id,email",
+        "INSERT INTO users(email,password_hash) VALUES($1,$2) RETURNING id,email,email_verified_at",
         [email, passwordHash]
       );
       const session = await createSession(result.rows[0].id);
       sessionCookie(res, session.token, SESSION_TTL_DAYS * 86400);
-      return json(res, 201, { user: result.rows[0] });
+      try { await sendVerificationEmail(result.rows[0]); } catch (error) { console.error("verification email:", error.message); }
+      return json(res, 201, { user: result.rows[0], emailVerified: false });
     } catch (error) {
       if (error.code === "23505") return json(res, 409, { error: "Account already exists" });
       throw error;
@@ -330,7 +358,7 @@ async function route(req, res) {
     const input = await bodyJson(req);
     const email = String(input.email || "").trim().toLowerCase();
     const result = await pool.query(
-      "SELECT id,email,password_hash FROM users WHERE email=$1",
+      "SELECT id,email,password_hash,email_verified_at FROM users WHERE email=$1",
       [email]
     );
     if (!result.rows[0] || !(await verifyPassword(String(input.password || ""), result.rows[0].password_hash))) {
@@ -338,7 +366,55 @@ async function route(req, res) {
     }
     const session = await createSession(result.rows[0].id);
     sessionCookie(res, session.token, SESSION_TTL_DAYS * 86400);
-    return json(res, 200, { user: { id: result.rows[0].id, email: result.rows[0].email } });
+    return json(res, 200, { user: { id: result.rows[0].id, email: result.rows[0].email, emailVerified: Boolean(result.rows[0].email_verified_at) } });
+  }
+
+  if (path === "/v1/auth/verify-email" && req.method === "POST") {
+    const input = await bodyJson(req);
+    const token = String(input.token || "");
+    const result = await pool.query("SELECT id,user_id FROM email_verification_tokens WHERE token_hash=$1 AND used_at IS NULL AND expires_at>now()", [hashSessionToken(token)]);
+    if (!result.rows[0]) return json(res, 400, { error: "Invalid or expired verification token" });
+    await withTransaction(async client => {
+      await client.query("UPDATE users SET email_verified_at=now() WHERE id=$1", [result.rows[0].user_id]);
+      await client.query("UPDATE email_verification_tokens SET used_at=now() WHERE id=$1", [result.rows[0].id]);
+    });
+    return json(res, 200, { verified: true });
+  }
+
+  if (path === "/v1/auth/resend-verification" && req.method === "POST") {
+    const user = await requireUser(req, res); if (!user) return;
+    if (!requireOriginAndCsrf(req, res)) return;
+    const result = await pool.query("SELECT id,email,email_verified_at FROM users WHERE id=$1", [user.id]);
+    if (result.rows[0]?.email_verified_at) return json(res, 200, { sent: false, verified: true });
+    try { await sendVerificationEmail(result.rows[0]); } catch { return json(res, 503, { error: "Verification email is unavailable" }); }
+    return json(res, 200, { sent: true });
+  }
+
+  if (path === "/v1/auth/request-password-reset" && req.method === "POST") {
+    if (!originAllowed(req)) return json(res, 403, { error: "Origin rejected" });
+    const input = await bodyJson(req);
+    const email = String(input.email || "").trim().toLowerCase();
+    const result = await pool.query("SELECT id,email FROM users WHERE email=$1", [email]);
+    if (result.rows[0]) {
+      try { await sendPasswordResetEmail(result.rows[0]); } catch (error) { console.error("password reset email:", error.message); }
+    }
+    return json(res, 200, { sent: true });
+  }
+
+  if (path === "/v1/auth/reset-password" && req.method === "POST") {
+    if (!originAllowed(req)) return json(res, 403, { error: "Origin rejected" });
+    const input = await bodyJson(req);
+    const token = String(input.token || "");
+    let passwordHash;
+    try { passwordHash = await hashPassword(String(input.password || "")); } catch (error) { return json(res, 400, { error: error.message }); }
+    const result = await pool.query("SELECT id,user_id FROM password_reset_tokens WHERE token_hash=$1 AND used_at IS NULL AND expires_at>now()", [hashSessionToken(token)]);
+    if (!result.rows[0]) return json(res, 400, { error: "Invalid or expired reset token" });
+    await withTransaction(async client => {
+      await client.query("UPDATE users SET password_hash=$2 WHERE id=$1", [result.rows[0].user_id, passwordHash]);
+      await client.query("UPDATE password_reset_tokens SET used_at=now() WHERE id=$1", [result.rows[0].id]);
+      await client.query("DELETE FROM sessions WHERE user_id=$1", [result.rows[0].user_id]);
+    });
+    return json(res, 200, { reset: true });
   }
 
   if (path === "/v1/auth/logout" && req.method === "POST") {
