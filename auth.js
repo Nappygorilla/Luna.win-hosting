@@ -23,6 +23,12 @@
   const modeButton = document.getElementById("mode-button");
   const links = document.getElementById("auth-links");
   const message = document.getElementById("form-message");
+  const resendButton = document.createElement("button");
+  resendButton.type = "button";
+  resendButton.className = "text-button verify-resend";
+  resendButton.textContent = "Resend verification email";
+  resendButton.hidden = true;
+  document.getElementById("auth-links").after(resendButton);
   const selectedPlan = document.getElementById("selected-plan");
 
   document.getElementById("plan-name").textContent = names[plan];
@@ -74,6 +80,7 @@
     }
 
     links.hidden = ["forgot","verify","reset"].includes(mode);
+    resendButton.hidden = mode !== "verify";
   }
 
   async function init() {
@@ -164,6 +171,15 @@
       renderMode();
       setMessage("");
     });
+  });
+
+  resendButton.addEventListener("click", async () => {
+    try {
+      await request("/v1/auth/resend-verification", {});
+      setMessage("A new verification email was requested.");
+    } catch (error) {
+      setMessage(error.message, true);
+    }
   });
 
   form.addEventListener("submit", submitForm);
