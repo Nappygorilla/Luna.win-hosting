@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "currency": "USD",
+  "plans": [
+    {
+      "id": "starter",
+      "name": "Starter",
+      "price_monthly": 2.99,
+      "ram_mb": 512,
+      "vcpu": 1,
+      "storage_gb": 5,
+      "restart_policy": "on-failure-with-backoff",
+      "runtime_families": ["nodejs", "python"]
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "price_monthly": 6.99,
+      "ram_mb": 2048,
+      "vcpu": 2,
+      "storage_gb": 20,
+      "restart_policy": "on-failure-with-backoff",
+      "runtime_families": ["nodejs", "python"]
+    },
+    {
+      "id": "scale",
+      "name": "Scale",
+      "price_monthly": 14.99,
+      "ram_mb": 4096,
+      "vcpu": 4,
+      "storage_gb": 40,
+      "restart_policy": "on-failure-with-backoff",
+      "runtime_families": ["nodejs", "python"]
+    }
+  ]
+}
