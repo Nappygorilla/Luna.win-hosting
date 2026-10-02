@@ -341,7 +341,7 @@ async function processStripeEvent(event) {
         );
       }
     });
-    return;
+    handled = true;
   }
 
   if (type === "customer.subscription.deleted" || type === "customer.subscription.updated") {
@@ -357,8 +357,10 @@ async function processStripeEvent(event) {
         [object.id]
       );
     }
+    handled = true;
   }
-    await pool.query("UPDATE stripe_events SET processed_at=now(),error=NULL WHERE event_id=$1", [eventId]);
+
+  if (handled) await pool.query("UPDATE stripe_events SET processed_at=now(),error=NULL WHERE event_id=$1", [eventId]);
   } catch (error) {
     await pool.query("UPDATE stripe_events SET error=$2 WHERE event_id=$1", [eventId, String(error.message || error).slice(0,1000)]);
     throw error;
