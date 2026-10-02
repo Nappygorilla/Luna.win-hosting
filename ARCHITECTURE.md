@@ -56,23 +56,25 @@ The marketing site is a static frontend. It should never directly control Docker
 Implemented in this repository:
 - account registration/login/logout with database-backed sessions;
 - CSRF token flow and origin validation for browser mutations;
-- PostgreSQL persistence for accounts, plans, subscriptions, services, jobs, agents, orders, encrypted environment variables, and audit events;
-- server-side resource/runtime checks;
-- Stripe subscription Checkout Session creation and signed webhook handling;
-- signed per-agent job transport and Docker resource policy primitives;
-- client-side plan → account → checkout flow.
+- PostgreSQL persistence for accounts, plans, subscriptions, services, jobs, agents, orders, encrypted environment variables, logs, metrics, billing events, and audit events;
+- server-side resource/runtime checks and one active bot entitlement per subscription;
+- Stripe subscription Checkout, signed/idempotent webhook handling, portal, and cancellation state;
+- endpoint-bound, replay-checked per-agent HMAC transport;
+- leased/retryable job execution with agent-capacity-aware claims;
+- persistent per-service data directories plus live CPU/RAM/storage/uptime/network telemetry plumbing;
+- client-side account, billing, environment, logs, usage, and activity flows.
 
 ## Production launch gate
 
-Do not accept real paid orders until:
-- email verification and account recovery are implemented;
-- rate limiting, abuse controls, monitoring, and alerting are deployed;
-- each VPS agent has a unique secret and secure enrollment/rotation process;
-- the host/filesystem actually enforces the advertised storage quota;
-- container images are pinned, built, and vulnerability scanned;
-- Stripe cancellation/portal flows are implemented and tested;
-- backup jobs and restore tests exist;
-- job retries/idempotency and agent capacity scheduling are hardened;
-- live logs/metrics are delivered from agents;
-- production HTTPS, secrets storage, and database backups are configured;
-- ENABLE_PAID_CHECKOUT=true is set only after the above controls pass.
+The repository now contains the code paths for authentication, billing state, retries/leases, capacity-aware scheduling, persistent service data, logs, metrics, and environment configuration. Before accepting real paid orders, the deployment still needs:
+- production email delivery, rate limiting at the edge/shared layer, abuse controls, monitoring, and alerting;
+- a secure per-agent enrollment and secret-rotation process;
+- verified host/filesystem quota enforcement for the advertised storage limits;
+- immutable container image digests and vulnerability scanning;
+- tested Stripe portal/cancellation/webhook flows;
+- backup jobs with successful restore drills;
+- network isolation between tenants;
+- production HTTPS, secret management, PostgreSQL backups, and disaster recovery;
+- end-to-end integration tests from account creation through agent/container execution;
+- an actual deployment/file-ingestion pipeline for customer code;
+- ENABLE_PAID_CHECKOUT=true only after the above controls pass.
