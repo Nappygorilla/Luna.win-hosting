@@ -26,6 +26,33 @@ const WEB_ORIGIN = process.env.WEB_ORIGIN || process.env.PUBLIC_BASE_URL || "";
 const AGENT_BOOTSTRAP_SECRET = process.env.AGENT_BOOTSTRAP_SECRET || "";
 const ENABLE_PAID_CHECKOUT = process.env.ENABLE_PAID_CHECKOUT === "true";
 const ALLOW_UNPAID_PROVISIONING = process.env.ALLOW_UNPAID_PROVISIONING === "true";
+const RATE_LIMITS = new Map();
+const AGENT_REPLAYS = new Map();
+
+function rateLimitKey(req, bucket) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwarded || req.socket.remoteAddress || "unknown";
+  return bucket + ":" + ip;
+}
+
+function allowRateLimit(req, bucket, limit, windowMs) {
+  const now = Date.now();
+  const key = rateLimitKey(req, bucket);
+  const entry = RATE_LIMITS.get(key);
+  if (!entry || entry.resetAt <= now) {
+    RATE_LIMITS.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  entry.count += 1;
+  return entry.count <= limit;
+}
+
+function rejectRateLimit(req, res, bucket, limit, windowMs) {
+  if (allowRateLimit(req, bucket, limit, windowMs)) return false;
+  res.setHeader("Retry-After", String(Math.ceil(windowMs / 1000)));
+  json(res, 429, { error: "Too many requests" });
+  return true;
+}
 
 function json(res, status, data, headers = {}) {
   const body = JSON.stringify(data);
@@ -33,6 +60,11 @@ function json(res, status, data, headers = {}) {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    ...(process.env.NODE_ENV === "production" ? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains" } : {}),
     ...headers
   });
   res.end(body);
@@ -96,7 +128,26 @@ function sessionCookie(res, token, maxAge) {
   );
 }
 
-async function sessionUser(req) {
+async async function authenticateAgentRequest(req, payload, requestPath) {
+  const agentId = String(req.headers["x-agent-id"] || "");
+  const timestamp = String(req.headers["x-agent-timestamp"] || "");
+  const signature = String(req.headers["x-agent-signature"] || "");
+  const agent = await pool.query("SELECT encrypted_secret FROM agents WHERE id=$1", [agentId]);
+  if (!agent.rows[0]?.encrypted_secret) return null;
+  let secret;
+  try { secret = decryptSecret(agent.rows[0].encrypted_secret); } catch { return null; }
+  if (!verifyAgentHmac(secret, timestamp, payload, signature, req.method, requestPath)) return null;
+  const replayKey = agentId + ":" + signature;
+  const now = Date.now();
+  for (const [key, seenAt] of AGENT_REPLAYS) {
+    if (now - seenAt > 5 * 60 * 1000) AGENT_REPLAYS.delete(key);
+  }
+  if (AGENT_REPLAYS.has(replayKey)) return null;
+  AGENT_REPLAYS.set(replayKey, now);
+  return { agentId, secret };
+}
+
+function sessionUser(req) {
   const token = parseCookies(req)[COOKIE];
   if (!token) return null;
   const result = await pool.query(
@@ -148,6 +199,7 @@ function serviceView(row) {
     runtime: row.runtime,
     status: row.status,
     nodeId: row.node_id,
+    subscriptionId: row.subscription_id,
     resources: {
       ram_mb: row.ram_mb,
       vcpu: row.vcpu,
@@ -241,8 +293,17 @@ async function sendPasswordResetEmail(user) {
 
 async function processStripeEvent(event) {
   const type = event && event.type;
+  const eventId = String(event && event.id || "");
   const object = event && event.data && event.data.object;
-  if (!object) return;
+  if (!eventId || !object) return;
+
+  const inserted = await pool.query(
+    "INSERT INTO stripe_events(event_id,event_type) VALUES($1,$2) ON CONFLICT(event_id) DO NOTHING RETURNING event_id",
+    [eventId, type || "unknown"]
+  );
+  if (!inserted.rows[0]) return;
+
+  try {
 
   if (type === "checkout.session.completed") {
     const metadata = object.metadata || {};
@@ -297,6 +358,11 @@ async function processStripeEvent(event) {
       );
     }
   }
+    await pool.query("UPDATE stripe_events SET processed_at=now(),error=NULL WHERE event_id=$1", [eventId]);
+  } catch (error) {
+    await pool.query("UPDATE stripe_events SET error=$2 WHERE event_id=$1", [eventId, String(error.message || error).slice(0,1000)]);
+    throw error;
+  }
 }
 
 async function route(req, res) {
@@ -328,6 +394,7 @@ async function route(req, res) {
   }
 
   if (path === "/v1/auth/register" && req.method === "POST") {
+    if (rejectRateLimit(req, res, "register", 5, 15 * 60 * 1000)) return;
     if (!originAllowed(req)) return json(res, 403, { error: "Origin rejected" });
     const input = await bodyJson(req);
     const email = String(input.email || "").trim().toLowerCase();
@@ -354,6 +421,7 @@ async function route(req, res) {
   }
 
   if (path === "/v1/auth/login" && req.method === "POST") {
+    if (rejectRateLimit(req, res, "login", 10, 15 * 60 * 1000)) return;
     if (!originAllowed(req)) return json(res, 403, { error: "Origin rejected" });
     const input = await bodyJson(req);
     const email = String(input.email || "").trim().toLowerCase();
@@ -370,6 +438,7 @@ async function route(req, res) {
   }
 
   if (path === "/v1/auth/verify-email" && req.method === "POST") {
+    if (rejectRateLimit(req, res, "verify-email", 10, 15 * 60 * 1000)) return;
     const input = await bodyJson(req);
     const token = String(input.token || "");
     const result = await pool.query("SELECT id,user_id FROM email_verification_tokens WHERE token_hash=$1 AND used_at IS NULL AND expires_at>now()", [hashSessionToken(token)]);
@@ -382,6 +451,7 @@ async function route(req, res) {
   }
 
   if (path === "/v1/auth/resend-verification" && req.method === "POST") {
+    if (rejectRateLimit(req, res, "resend-verification", 3, 30 * 60 * 1000)) return;
     const user = await requireUser(req, res); if (!user) return;
     if (!requireOriginAndCsrf(req, res)) return;
     const result = await pool.query("SELECT id,email,email_verified_at FROM users WHERE id=$1", [user.id]);
@@ -391,6 +461,7 @@ async function route(req, res) {
   }
 
   if (path === "/v1/auth/request-password-reset" && req.method === "POST") {
+    if (rejectRateLimit(req, res, "password-reset", 5, 15 * 60 * 1000)) return;
     if (!originAllowed(req)) return json(res, 403, { error: "Origin rejected" });
     const input = await bodyJson(req);
     const email = String(input.email || "").trim().toLowerCase();
@@ -506,19 +577,26 @@ async function route(req, res) {
     const name = String(input.name || "discord-bot").trim().slice(0, 64);
     if (!name) return json(res, 400, { error: "Service name required" });
 
+    let subscriptionId = null;
     if (ENABLE_PAID_CHECKOUT) {
       const subscription = await pool.query(
-        "SELECT id FROM subscriptions WHERE user_id=$1 AND status IN ('active','trialing') AND plan_id=$2 LIMIT 1",
+        "SELECT id FROM subscriptions WHERE user_id=$1 AND status IN ('active','trialing') AND plan_id=$2 ORDER BY created_at DESC LIMIT 1",
         [user.id, plan.id]
       );
       if (!subscription.rows[0]) return json(res, 402, { error: "Active subscription required" });
+      subscriptionId = subscription.rows[0].id;
+      const existing = await pool.query(
+        "SELECT id FROM services WHERE subscription_id=$1 AND status <> 'deleted' LIMIT 1",
+        [subscriptionId]
+      );
+      if (existing.rows[0]) return json(res, 409, { error: "This subscription already has a bot" });
     }
 
     const service = await withTransaction(async client => {
       const created = await client.query(
-        "INSERT INTO services(user_id,plan_id,name,runtime,status,ram_mb,vcpu,storage_gb) " +
-        "VALUES($1,$2,$3,$4,'provisioning',$5,$6,$7) RETURNING *",
-        [user.id, plan.id, name, runtime, limits.ramMb, limits.vcpu, limits.storageGb]
+        "INSERT INTO services(user_id,subscription_id,plan_id,name,runtime,status,ram_mb,vcpu,storage_gb) " +
+        "VALUES($1,$2,$3,$4,'provisioning',$5,$6,$7,$8) RETURNING *",
+        [user.id, subscriptionId, plan.id, name, runtime, limits.ramMb, limits.vcpu, limits.storageGb]
       );
       await client.query(
         "INSERT INTO jobs(service_id,action,payload) VALUES($1,'provision',$2)",
@@ -708,47 +786,80 @@ async function route(req, res) {
 
   if (path === "/v1/internal/agent/heartbeat" && req.method === "POST") {
     const payload = await rawBody(req);
-    const agentId = String(req.headers["x-agent-id"] || "");
-    const timestamp = String(req.headers["x-agent-timestamp"] || "");
-    const signature = String(req.headers["x-agent-signature"] || "");
-    const agent = await pool.query("SELECT encrypted_secret FROM agents WHERE id=$1", [agentId]);
-    if (!agent.rows[0]?.encrypted_secret) return json(res, 401, { error: "Agent authentication failed" });
-    let secret;
-    try { secret = decryptSecret(agent.rows[0].encrypted_secret); } catch { return json(res, 401, { error: "Agent authentication failed" }); }
-    if (!verifyAgentHmac(secret, timestamp, payload, signature)) return json(res, 401, { error: "Agent authentication failed" });
-    await pool.query("UPDATE agents SET last_seen_at=now() WHERE id=$1", [agentId]);
+    const auth = await authenticateAgentRequest(req, payload, path);
+    if (!auth) return json(res, 401, { error: "Agent authentication failed" });
+    await pool.query("UPDATE agents SET last_seen_at=now() WHERE id=$1", [auth.agentId]);
     return json(res, 200, { ok: true });
   }
 
   if (path === "/v1/internal/agent/jobs/claim" && req.method === "POST") {
     const payload = await rawBody(req);
-    const agentId = String(req.headers["x-agent-id"] || "");
-    const timestamp = String(req.headers["x-agent-timestamp"] || "");
-    const signature = String(req.headers["x-agent-signature"] || "");
-    const agent = await pool.query("SELECT encrypted_secret FROM agents WHERE id=$1", [agentId]);
-    if (!agent.rows[0]?.encrypted_secret) return json(res, 401, { error: "Agent authentication failed" });
-    let secret;
-    try { secret = decryptSecret(agent.rows[0].encrypted_secret); } catch { return json(res, 401, { error: "Agent authentication failed" }); }
-    if (!verifyAgentHmac(secret, timestamp, payload, signature)) return json(res, 401, { error: "Agent authentication failed" });
+    const auth = await authenticateAgentRequest(req, payload, path);
+    if (!auth) return json(res, 401, { error: "Agent authentication failed" });
+    const agentId = auth.agentId;
+    const secret = auth.secret;
 
     const job = await withTransaction(async client => {
-      const locked = await client.query(
-        "SELECT j.*,s.plan_id,s.name,s.runtime,s.ram_mb,s.vcpu,s.storage_gb " +
-        "FROM jobs j JOIN services s ON s.id=j.service_id " +
-        "WHERE j.status='queued' AND j.available_at<=now() AND (j.agent_id IS NULL OR j.agent_id=$1) " +
-        "ORDER BY j.created_at FOR UPDATE SKIP LOCKED LIMIT 1",
+      await client.query(
+        "UPDATE jobs SET status=CASE WHEN attempts>=max_attempts THEN 'dead' ELSE 'queued' END," +
+        "agent_id=NULL,locked_by=NULL,locked_at=NULL,lease_expires_at=NULL," +
+        "available_at=CASE WHEN attempts>=max_attempts THEN available_at ELSE now() END," +
+        "retry_at=NULL,dead_lettered_at=CASE WHEN attempts>=max_attempts THEN now() ELSE dead_lettered_at END " +
+        "WHERE status='running' AND lease_expires_at IS NOT NULL AND lease_expires_at<now()"
+      );
+
+      const capacityResult = await client.query("SELECT node_capacity FROM agents WHERE id=$1 FOR UPDATE", [agentId]);
+      const capacity = capacityResult.rows[0]?.node_capacity || {};
+      const activeUsage = await client.query(
+        "SELECT COALESCE(SUM(ram_mb),0) AS ram_mb,COALESCE(SUM(vcpu),0) AS vcpu FROM services " +
+        "WHERE node_id=$1 AND status IN ('provisioning','starting','running','restarting')",
         [agentId]
       );
-      if (!locked.rows[0]) return null;
-      const row = locked.rows[0];
-      const env = await client.query(
-        "SELECT key,encrypted_value FROM service_env WHERE service_id=$1",
-        [row.service_id]
+      const storageUsage = await client.query(
+        "SELECT COALESCE(SUM(storage_gb),0) AS storage_gb FROM services WHERE node_id=$1 AND status <> 'deleted'",
+        [agentId]
       );
-      const secrets = Object.fromEntries(env.rows.map(item => [item.key, decryptSecret(item.encrypted_value)]));
+      const used = {
+        ramMb: Number(activeUsage.rows[0].ram_mb || 0),
+        vcpu: Number(activeUsage.rows[0].vcpu || 0),
+        storageGb: Number(storageUsage.rows[0].storage_gb || 0)
+      };
+
+      const candidates = await client.query(
+        "SELECT j.*,s.plan_id,s.name,s.runtime,s.ram_mb,s.vcpu,s.storage_gb,s.node_id " +
+        "FROM jobs j JOIN services s ON s.id=j.service_id " +
+        "WHERE j.status='queued' AND j.available_at<=now() " +
+        "ORDER BY j.created_at FOR UPDATE SKIP LOCKED LIMIT 25"
+      );
+
+      let row = null;
+      for (const candidate of candidates.rows) {
+        if (candidate.action !== "provision" && candidate.node_id && candidate.node_id !== agentId) continue;
+        if (candidate.action === "provision") {
+          const ramCap = Number(capacity.ram_mb || 0);
+          const cpuCap = Number(capacity.vcpu || 0);
+          const storageCap = Number(capacity.storage_gb || 0);
+          if (ramCap && used.ramMb + Number(candidate.ram_mb) > ramCap) continue;
+          if (cpuCap && used.vcpu + Number(candidate.vcpu) > cpuCap) continue;
+          if (storageCap && used.storageGb + Number(candidate.storage_gb) > storageCap) continue;
+        }
+        row = candidate;
+        break;
+      }
+      if (!row) return null;
+
       const plan = getPlan(row.plan_id);
       const limits = enforcePlanLimits(plan, { ramMb: row.ram_mb, vcpu: row.vcpu, storageGb: row.storage_gb });
       validateRuntime(plan, row.runtime);
+      let secrets = {};
+      if (row.action === "provision") {
+        const env = await client.query(
+          "SELECT key,encrypted_value FROM service_env WHERE service_id=$1",
+          [row.service_id]
+        );
+        secrets = Object.fromEntries(env.rows.map(item => [item.key, decryptSecret(item.encrypted_value)]));
+      }
+
       const jobPayload = {
         id: row.id,
         action: row.action,
@@ -765,7 +876,7 @@ async function route(req, res) {
         env: row.action === "provision" ? secrets : {}
       };
       await client.query(
-        "UPDATE jobs SET agent_id=$2,status='running',locked_at=now(),attempts=attempts+1 WHERE id=$1",
+        "UPDATE jobs SET agent_id=$2,locked_by=$2,status='running',locked_at=now(),lease_expires_at=now()+interval '10 minutes',attempts=attempts+1 WHERE id=$1",
         [row.id, agentId]
       );
       return jobPayload;
@@ -773,44 +884,73 @@ async function route(req, res) {
 
     if (!job) { res.writeHead(204); return res.end(); }
     const body = JSON.stringify(job);
-    const signed = signAgentPayload(secret, body);
+    const signed = signAgentPayload(secret, body, undefined, req.method, path);
     return json(res, 200, { job, signature: signed });
   }
 
   if (path === "/v1/internal/agent/jobs/result" && req.method === "POST") {
     const requestBody = await bodyJson(req);
     const body = JSON.stringify(requestBody);
-    const agentId = String(req.headers["x-agent-id"] || "");
-    const timestamp = String(req.headers["x-agent-timestamp"] || "");
-    const signature = String(req.headers["x-agent-signature"] || "");
-    const agent = await pool.query("SELECT encrypted_secret FROM agents WHERE id=$1", [agentId]);
-    if (!agent.rows[0]?.encrypted_secret) return json(res, 401, { error: "Agent authentication failed" });
-    let secret;
-    try { secret = decryptSecret(agent.rows[0].encrypted_secret); } catch { return json(res, 401, { error: "Agent authentication failed" }); }
-    if (!verifyAgentHmac(secret, timestamp, body, signature)) return json(res, 401, { error: "Agent authentication failed" });
+    const auth = await authenticateAgentRequest(req, body, path);
+    if (!auth) return json(res, 401, { error: "Agent authentication failed" });
     const jobId = String(requestBody.jobId || "");
     const ok = Boolean(requestBody.ok);
-    await pool.query(
-      "UPDATE jobs SET status=$2,completed_at=CASE WHEN $3 THEN now() ELSE completed_at END,last_error=$4 WHERE id=$1 AND agent_id=$5",
-      [jobId, ok ? "completed" : "failed", ok, ok ? null : String(requestBody.error || "Agent execution failed").slice(0, 1000), agentId]
+    const jobResult = await pool.query(
+      "SELECT id,service_id,action,attempts,max_attempts FROM jobs WHERE id=$1 AND agent_id=$2 AND status='running'",
+      [jobId, auth.agentId]
     );
-    if (requestBody.serviceId) {
+    if (!jobResult.rows[0]) return json(res, 409, { error: "Job is not running or was already completed" });
+    const job = jobResult.rows[0];
+    const retryable = !ok && Number(job.attempts) < Number(job.max_attempts);
+    const retryDelay = Math.min(300, 5 * (2 ** Math.max(Number(job.attempts) - 1, 0)));
+    const nextStatus = ok ? "completed" : retryable ? "queued" : "dead";
+    await pool.query(
+      "UPDATE jobs SET status=$2,completed_at=CASE WHEN $3 THEN now() ELSE NULL END,last_error=$4," +
+      "retry_at=CASE WHEN $5 THEN now()+($6 || ' seconds')::interval ELSE NULL END," +
+      "available_at=CASE WHEN $5 THEN now()+($6 || ' seconds')::interval ELSE available_at END," +
+      "locked_at=NULL,locked_by=NULL,lease_expires_at=NULL,dead_lettered_at=CASE WHEN $7 THEN now() ELSE dead_lettered_at END " +
+      "WHERE id=$1 AND agent_id=$8 AND status='running'",
+      [jobId,nextStatus,ok,ok ? null : String(requestBody.error || "Agent execution failed").slice(0,1000),retryable,retryDelay,!retryable && !ok,auth.agentId]
+    );
+
+    if (job.service_id && ["provision","start","stop","restart"].includes(job.action)) {
       await pool.query(
         "UPDATE services SET status=$2,container_id=COALESCE($3,container_id),node_id=$4,updated_at=now() WHERE id=$1",
-        [requestBody.serviceId, ok ? (requestBody.status || "running") : "error", requestBody.containerId || null, agentId]
+        [job.service_id, ok ? (requestBody.status || "running") : "error", requestBody.containerId || null, auth.agentId]
       );
-      if (typeof requestBody.logs === "string" && requestBody.logs.length) {
-        await pool.query(
-          "INSERT INTO service_logs(service_id,source,content) VALUES($1,'agent',$2)",
-          [requestBody.serviceId, requestBody.logs.slice(-200000)]
-        );
-        await pool.query(
-          "DELETE FROM service_logs WHERE service_id=$1 AND id NOT IN (SELECT id FROM service_logs WHERE service_id=$1 ORDER BY id DESC LIMIT 1000)",
-          [requestBody.serviceId]
-        );
-      }
     }
-    return json(res, 200, { ok: true });
+
+    if (job.service_id && typeof requestBody.logs === "string" && requestBody.logs.length) {
+      const content = requestBody.logs.slice(-200000);
+      const recent = await pool.query("SELECT content FROM service_logs WHERE service_id=$1 ORDER BY id DESC LIMIT 1", [job.service_id]);
+      if (recent.rows[0]?.content !== content) {
+        await pool.query("INSERT INTO service_logs(service_id,source,content) VALUES($1,'agent',$2)", [job.service_id, content]);
+      }
+      await pool.query(
+        "DELETE FROM service_logs WHERE service_id=$1 AND id NOT IN (SELECT id FROM service_logs WHERE service_id=$1 ORDER BY id DESC LIMIT 1000)",
+        [job.service_id]
+      );
+    }
+
+    if (job.service_id && job.action === "usage" && requestBody.usage && typeof requestBody.usage === "object") {
+      const n = value => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+      };
+      await pool.query(
+        "INSERT INTO service_metrics(service_id,cpu_percent,memory_bytes,memory_limit_bytes,storage_bytes,storage_limit_bytes,uptime_seconds,network_rx_bytes,network_tx_bytes) " +
+        "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        [job.service_id, Math.min(100,n(requestBody.usage.cpuPercent) ?? 0), n(requestBody.usage.memoryBytes), n(requestBody.usage.memoryLimitBytes),
+          n(requestBody.usage.storageBytes), n(requestBody.usage.storageLimitBytes), n(requestBody.usage.uptimeSeconds),
+          n(requestBody.usage.networkRxBytes), n(requestBody.usage.networkTxBytes)]
+      );
+      await pool.query(
+        "DELETE FROM service_metrics WHERE service_id=$1 AND id NOT IN (SELECT id FROM service_metrics WHERE service_id=$1 ORDER BY id DESC LIMIT 10000)",
+        [job.service_id]
+      );
+    }
+
+    return json(res, 200, { ok: true, status: nextStatus });
   }
 
   return json(res, 404, { error: "Not found" });
