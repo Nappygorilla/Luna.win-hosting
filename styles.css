@@ -341,3 +341,35 @@ details p { color:#777; max-width:650px; line-height:1.8; padding:0 0 24px; marg
 .billing-actions .button:disabled { opacity:.38; cursor:not-allowed; transform:none; }
 @media (max-width: 940px) { .dashboard-layout { grid-template-columns:1fr; } .service-list-card { position:static; } .service-list { max-height:none; grid-template-columns:repeat(2,minmax(0,1fr)); } .billing-card { align-items:flex-start; flex-direction:column; } }
 @media (max-width: 620px) { .service-list { grid-template-columns:1fr; } .billing-actions, .selection-actions { width:100%; } .billing-actions .button, .selection-actions .button { flex:1; } }
+
+
+:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+button:focus:not(:focus-visible) { outline: none; }
+#auth-form input:focus-visible { border-color: rgba(255,255,255,.5); outline: 2px solid rgba(255,255,255,.14); outline-offset: 1px; }
+.env-form { display:grid; gap:14px; }
+.env-list { display:grid; gap:8px; }
+.env-editor-row { display:grid; grid-template-columns:minmax(130px,.65fr) minmax(160px,1fr) auto; gap:8px; align-items:center; }
+.env-editor-row input {
+  width:100%; min-width:0; border:1px solid var(--line); border-radius:10px; background:#090909; color:#eee; padding:11px 12px; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; outline:none;
+}
+.env-editor-row input:focus-visible { border-color:rgba(255,255,255,.42); outline:2px solid rgba(255,255,255,.12); outline-offset:1px; }
+.env-form-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.panel-note-inline { margin:0; color:#5f5f5f; font-size:10px; line-height:1.6; }
+.activity-list { display:grid; }
+.activity-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px 0; border-top:1px solid var(--line); }
+.activity-row:first-child { border-top:0; }
+.activity-row span { display:grid; gap:3px; }
+.activity-row strong { color:#bdbdbd; font-size:11px; text-transform:capitalize; }
+.activity-row small { color:#555; font-size:9px; }
+.activity-row > b { color:#8d8d8d; font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
+.panel-auth-link { justify-self:start; margin-top:6px; }
+@media (max-width: 620px) {
+  .env-editor-row { grid-template-columns:1fr; }
+  .env-remove { justify-self:start; }
+  .env-form-actions { justify-content:stretch; }
+  .env-form-actions > * { flex:1; }
+}
