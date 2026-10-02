@@ -344,7 +344,10 @@
         cancelButton.disabled = true;
         return;
       }
-      billingCopy.textContent = "Plan: " + sub.plan_id + " · " + billingStatus(sub.status) +
+      const displayStatus = sub.cancel_at_period_end && ["active","trialing"].includes(sub.status)
+        ? "Canceling at period end"
+        : billingStatus(sub.status);
+      billingCopy.textContent = "Plan: " + sub.plan_id + " · " + displayStatus +
         (sub.current_period_end ? " · Period end: " + new Date(sub.current_period_end).toLocaleDateString() : "");
       portalButton.disabled = !["active","trialing","past_due"].includes(sub.status);
       cancelButton.disabled = !["active","trialing","past_due"].includes(sub.status);
