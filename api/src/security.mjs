@@ -77,11 +77,11 @@ export function hashAgentSecret(secret) {
   return createHash("sha256").update(secret).digest("hex");
 }
 
-export function verifyAgentHmac(secret, timestamp, body, signature) {
+export function verifyAgentHmac(secret, timestamp, body, signature, method = "POST", path = "") {
   const ts = Number(timestamp);
   if (!Number.isFinite(ts) || Math.abs(Date.now() - ts * 1000) > 5 * 60 * 1000) return false;
   const expected = createHmac("sha256", secret)
-    .update(String(timestamp) + "." + body)
+    .update(String(timestamp) + "." + String(method).toUpperCase() + " " + String(path) + "." + body)
     .digest("hex");
   try {
     return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(String(signature), "hex"));
@@ -90,9 +90,9 @@ export function verifyAgentHmac(secret, timestamp, body, signature) {
   }
 }
 
-export function signAgentPayload(secret, body, timestamp = Math.floor(Date.now() / 1000)) {
+export function signAgentPayload(secret, body, timestamp = Math.floor(Date.now() / 1000), method = "POST", path = "") {
   const signature = createHmac("sha256", secret)
-    .update(String(timestamp) + "." + body)
+    .update(String(timestamp) + "." + String(method).toUpperCase() + " " + String(path) + "." + body)
     .digest("hex");
   return { timestamp: String(timestamp), signature };
 }
