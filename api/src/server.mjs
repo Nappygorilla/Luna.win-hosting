@@ -320,20 +320,25 @@ async function processStripeEvent(event) {
       await client.query(
         "INSERT INTO subscriptions(user_id,plan_id,provider,provider_customer_id,provider_subscription_id,status) " +
         "VALUES($1,$2,'stripe',$3,$4,'active') " +
-        "ON CONFLICT(provider_subscription_id) DO UPDATE SET status='active',updated_at=now()",
+        "ON CONFLICT(provider_subscription_id) DO UPDATE SET status='active',provider_customer_id=EXCLUDED.provider_customer_id,plan_id=EXCLUDED.plan_id,updated_at=now()",
         [userId, planId, object.customer || null, object.subscription || null]
       );
+      const subscriptionResult = await client.query(
+        "SELECT id FROM subscriptions WHERE provider_subscription_id=$1",
+        [object.subscription]
+      );
+      const subscriptionId = subscriptionResult.rows[0]?.id;
 
       const serviceExists = await client.query(
-        "SELECT id FROM services WHERE user_id=$1 AND plan_id=$2 AND status IN ('provisioning','running','stopped','starting') LIMIT 1",
-        [userId, planId]
+        "SELECT id FROM services WHERE subscription_id=$1 AND status <> 'deleted' LIMIT 1",
+        [subscriptionId]
       );
       if (!serviceExists.rows[0]) {
         const plan = getPlan(planId);
         const service = await client.query(
-          "INSERT INTO services(user_id,plan_id,name,runtime,status,ram_mb,vcpu,storage_gb) " +
-          "VALUES($1,$2,$3,$4,'provisioning',$5,$6,$7) RETURNING id",
-          [userId, planId, "discord-bot", "nodejs", plan.ramMb, plan.vcpu, plan.storageGb]
+          "INSERT INTO services(user_id,subscription_id,plan_id,name,runtime,status,ram_mb,vcpu,storage_gb) " +
+          "VALUES($1,$2,$3,$4,$5,'provisioning',$6,$7,$8) RETURNING id",
+          [userId, subscriptionId, planId, "discord-bot", "nodejs", plan.ramMb, plan.vcpu, plan.storageGb]
         );
         await client.query(
           "INSERT INTO jobs(service_id,action,payload) VALUES($1,'provision',$2)",
@@ -619,7 +624,7 @@ async function route(req, res) {
     return json(res, 200, { service: serviceView(service) });
   }
 
-  const actionMatch = path.match(/^\/v1\/services\/([^/]+)\/actions\/(start|stop|restart|logs)$/);
+  const actionMatch = path.match(/^\/v1\/services\/([^/]+)\/actions\/(start|stop|restart|logs|usage)$/);
   if (actionMatch && req.method === "POST") {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -638,6 +643,45 @@ async function route(req, res) {
     return json(res, 202, { accepted: true, status: action });
   }
 
+  const usageRoute = path.match(/^\/v1\/services\/([^/]+)\/usage$/);
+  if (usageRoute && req.method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const service = await getServiceForUser(usageRoute[1], user.id);
+    if (!service) return json(res, 404, { error: "Service not found" });
+    const result = await pool.query(
+      "SELECT cpu_percent,memory_bytes,memory_limit_bytes,storage_bytes,storage_limit_bytes,uptime_seconds,network_rx_bytes,network_tx_bytes,sampled_at " +
+      "FROM service_metrics WHERE service_id=$1 ORDER BY sampled_at DESC LIMIT 1",
+      [service.id]
+    );
+    const row = result.rows[0];
+    return json(res, 200, { usage: row ? {
+      cpuPercent: Number(row.cpu_percent),
+      memoryBytes: Number(row.memory_bytes),
+      memoryLimitBytes: Number(row.memory_limit_bytes),
+      storageBytes: Number(row.storage_bytes),
+      storageLimitBytes: Number(row.storage_limit_bytes),
+      uptimeSeconds: row.uptime_seconds == null ? null : Number(row.uptime_seconds),
+      networkRxBytes: row.network_rx_bytes == null ? null : Number(row.network_rx_bytes),
+      networkTxBytes: row.network_tx_bytes == null ? null : Number(row.network_tx_bytes),
+      sampledAt: row.sampled_at
+    } : null });
+  }
+
+  const jobsRoute = path.match(/^\/v1\/services\/([^/]+)\/jobs$/);
+  if (jobsRoute && req.method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const service = await getServiceForUser(jobsRoute[1], user.id);
+    if (!service) return json(res, 404, { error: "Service not found" });
+    const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 25), 100));
+    const result = await pool.query(
+      "SELECT id,action,status,attempts,max_attempts,last_error,created_at,completed_at,retry_at FROM jobs WHERE service_id=$1 ORDER BY created_at DESC LIMIT $2",
+      [service.id, limit]
+    );
+    return json(res, 200, { jobs: result.rows });
+  }
+
   const logsRoute = path.match(/^\/v1\/services\/([^/]+)\/logs$/);
   if (logsRoute && req.method === "GET") {
     const user = await requireUser(req, res);
@@ -653,6 +697,18 @@ async function route(req, res) {
   }
 
   const envMatch = path.match(/^\/v1\/services\/([^/]+)\/env$/);
+  if (envMatch && req.method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const service = await getServiceForUser(envMatch[1], user.id);
+    if (!service) return json(res, 404, { error: "Service not found" });
+    const result = await pool.query(
+      "SELECT key,updated_at FROM service_env WHERE service_id=$1 ORDER BY key ASC",
+      [service.id]
+    );
+    return json(res, 200, { keys: result.rows.map(row => row.key), variables: result.rows.map(row => ({ key: row.key, configured: true, updatedAt: row.updated_at })) });
+  }
+
   if (envMatch && req.method === "PUT") {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -670,6 +726,10 @@ async function route(req, res) {
 
     for (const [key, value] of entries) {
       if (!/^[A-Z_][A-Z0-9_]{0,63}$/.test(key)) return json(res, 400, { error: "Invalid environment key" });
+      if (value === null) {
+        await pool.query("DELETE FROM service_env WHERE service_id=$1 AND key=$2", [service.id, key]);
+        continue;
+      }
       if (typeof value !== "string" || value.length > 8192) return json(res, 400, { error: "Invalid environment value" });
       await pool.query(
         "INSERT INTO service_env(service_id,key,encrypted_value) VALUES($1,$2,$3) " +
