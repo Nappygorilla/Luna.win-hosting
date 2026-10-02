@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { signAgentPayload, verifyAgentHmac } from "./security.mjs";
-import { launchContainer, stopContainer, restartContainer, readContainerLogs } from "./agent.mjs";
+import { launchContainer, stopContainer, restartContainer, readContainerLogs, collectContainerUsage } from "./agent.mjs";
 
 const API_URL = String(process.env.LUNA_API_URL || "").replace(/\/$/, "");
 const AGENT_ID = String(process.env.LUNA_AGENT_ID || "");
@@ -12,7 +12,7 @@ if (!API_URL || !AGENT_ID || AGENT_SECRET.length < 32) {
 
 async function request(path, payload) {
   const body = JSON.stringify(payload || {});
-  const signed = signAgentPayload(AGENT_SECRET, body);
+  const signed = signAgentPayload(AGENT_SECRET, body, undefined, "POST", path);
   const response = await fetch(API_URL + path, {
     method: "POST",
     headers: {
@@ -64,6 +64,11 @@ async function runJob(job) {
     return { ok: true, status: "running", serviceId: service.id, logs };
   }
 
+  if (job.action === "usage") {
+    const usage = await collectContainerUsage(service);
+    return { ok: true, status: "running", serviceId: service.id, usage };
+  }
+
   throw new Error("Unsupported job action: " + job.action);
 }
 
@@ -78,7 +83,7 @@ async function postResult(result, jobId) {
     error: result.error
   };
   const body = JSON.stringify(payload);
-  const signed = signAgentPayload(AGENT_SECRET, body);
+  const signed = signAgentPayload(AGENT_SECRET, body, undefined, "POST", "/v1/internal/agent/jobs/result");
   const response = await fetch(API_URL + "/v1/internal/agent/jobs/result", {
     method: "POST",
     headers: {
@@ -95,7 +100,7 @@ async function postResult(result, jobId) {
 async function heartbeat() {
   const payload = { at: new Date().toISOString() };
   const body = JSON.stringify(payload);
-  const signed = signAgentPayload(AGENT_SECRET, body);
+  const signed = signAgentPayload(AGENT_SECRET, body, undefined, "POST", "/v1/internal/agent/heartbeat");
   const response = await fetch(API_URL + "/v1/internal/agent/heartbeat", {
     method: "POST",
     headers: {
@@ -118,7 +123,7 @@ async function main() {
         try {
           const body = JSON.stringify(data.job);
           const sig = data.signature || {};
-          if (!verifyAgentHmac(AGENT_SECRET, sig.timestamp, body, sig.signature)) {
+          if (!verifyAgentHmac(AGENT_SECRET, sig.timestamp, body, sig.signature, "POST", "/v1/internal/agent/jobs/claim")) {
             throw new Error("Invalid signed job");
           }
           const result = await runJob(data.job);
@@ -127,7 +132,8 @@ async function main() {
           await postResult({
             ok: false,
             serviceId: data.job.service && data.job.service.id,
-            status: "error"
+            status: "error",
+            error: error instanceof Error ? error.message : String(error)
           }, data.job.id).catch(() => {});
         }
       }
