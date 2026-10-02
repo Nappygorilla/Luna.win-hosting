@@ -352,8 +352,8 @@ async function processStripeEvent(event) {
   if (type === "customer.subscription.deleted" || type === "customer.subscription.updated") {
     const status = object.status || "canceled";
     await pool.query(
-      "UPDATE subscriptions SET status=$1,current_period_end=CASE WHEN $2::bigint IS NULL THEN current_period_end ELSE to_timestamp($2::bigint) END,updated_at=now() WHERE provider_subscription_id=$3",
-      [status, object.current_period_end ?? null, object.id]
+      "UPDATE subscriptions SET status=$1,current_period_end=CASE WHEN $2::bigint IS NULL THEN current_period_end ELSE to_timestamp($2::bigint) END,cancel_at_period_end=$4,updated_at=now() WHERE provider_subscription_id=$3",
+      [status, object.current_period_end ?? null, object.id, Boolean(object.cancel_at_period_end)]
     );
     if (status === "canceled" || status === "unpaid") {
       await pool.query(
@@ -525,7 +525,7 @@ async function route(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     const result = await pool.query(
-      "SELECT plan_id,status,current_period_end,provider_customer_id,provider_subscription_id FROM subscriptions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1",
+      "SELECT plan_id,status,current_period_end,cancel_at_period_end,provider_customer_id,provider_subscription_id FROM subscriptions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1",
       [user.id]
     );
     return json(res, 200, { subscription: result.rows[0] || null });
