@@ -128,7 +128,7 @@ function sessionCookie(res, token, maxAge) {
   );
 }
 
-async async function authenticateAgentRequest(req, payload, requestPath) {
+async function authenticateAgentRequest(req, payload, requestPath) {
   const agentId = String(req.headers["x-agent-id"] || "");
   const timestamp = String(req.headers["x-agent-timestamp"] || "");
   const signature = String(req.headers["x-agent-signature"] || "");
