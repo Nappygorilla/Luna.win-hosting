@@ -47,5 +47,6 @@ The values shown in `config/plans.json` are the current product proposal, not pr
 - POST /v1/billing/cancel
 - GET /v1/services/:id/logs
 - POST /v1/services/:id/actions/logs
+- POST /v1/services/:id/actions/usage
 
-Agent requests use X-Agent-Id, X-Agent-Timestamp, and X-Agent-Signature. The raw agent secret is not sent with normal heartbeat, job-claim, or job-result requests.
+Agent requests use X-Agent-Id, X-Agent-Timestamp, and X-Agent-Signature. The raw agent secret is not sent with normal heartbeat, job-claim, or job-result requests. Signatures cover the timestamp, HTTP method, endpoint path, and request body; duplicate signatures are rejected within the validity window.
