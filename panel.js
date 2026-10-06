@@ -17,6 +17,14 @@
   const addEnvButton = document.getElementById("add-env");
   const saveEnvButton = document.getElementById("save-env");
   const activityList = document.getElementById("activity-list");
+  const loyaltyTier = document.getElementById("loyalty-tier");
+  const loyaltyPoints = document.getElementById("loyalty-points");
+  const loyaltyMonths = document.getElementById("loyalty-months");
+  const loyaltyPerk = document.getElementById("loyalty-perk");
+  const loyaltyNext = document.getElementById("loyalty-next");
+  const loyaltyProgressLabel = document.getElementById("loyalty-progress-label");
+  const loyaltyProgress = document.getElementById("loyalty-progress");
+  const loyaltyNote = document.getElementById("loyalty-note");
   const params = new URLSearchParams(window.location.search);
   const requestedServiceId = params.get("service");
   const requestedPlanParam = (params.get("plan") || "").toLowerCase();
@@ -333,6 +341,42 @@
     unpaid:"Unpaid",
     canceled:"Canceled"
   }[status] || status || "Unknown");
+
+  function renderLoyalty(data) {
+    const loyalty = data?.loyalty;
+    if (!loyalty) {
+      loyaltyTier.textContent = "—";
+      loyaltyPoints.textContent = "0";
+      loyaltyMonths.textContent = "0";
+      loyaltyPerk.textContent = "No active subscription";
+      loyaltyNext.textContent = "Subscribe to start earning loyalty rewards.";
+      loyaltyProgressLabel.textContent = "0%";
+      loyaltyProgress.style.width = "0%";
+      loyaltyNote.textContent = "Loyalty points are earned from verified paid subscription tenure.";
+      return;
+    }
+    loyaltyTier.textContent = loyalty.tier;
+    loyaltyPoints.textContent = String(loyalty.points);
+    loyaltyMonths.textContent = String(loyalty.monthsSubscribed);
+    loyaltyPerk.textContent = loyalty.currentPerk;
+    loyaltyNext.textContent = loyalty.nextReward;
+    loyaltyProgressLabel.textContent = Math.round(loyalty.progressPercent) + "%";
+    loyaltyProgress.style.width = Math.min(100, Math.max(0, loyalty.progressPercent)) + "%";
+    loyaltyNote.textContent = loyalty.note;
+  }
+
+  async function loadLoyalty() {
+    try {
+      const data = await api("/v1/account/loyalty");
+      renderLoyalty(data);
+    } catch (error) {
+      renderLoyalty(null);
+      loyaltyNext.textContent = error.status === 401
+        ? "Sign in to view your loyalty rewards."
+        : "Loyalty status is temporarily unavailable.";
+      loyaltyNote.textContent = "Your subscription history is used to calculate loyalty status.";
+    }
+  }
 
   async function loadBilling() {
     try {
