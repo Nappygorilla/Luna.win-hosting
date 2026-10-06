@@ -12,6 +12,7 @@ export const PLANS = Object.freeze(
         id: plan.id,
         name: plan.name,
         priceMonthlyCents: Math.round(Number(plan.price_monthly) * 100),
+        available: plan.available !== false,
         ramMb: plan.ram_mb,
         vcpu: plan.vcpu,
         storageGb: plan.storage_gb,
