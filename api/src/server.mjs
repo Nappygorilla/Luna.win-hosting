@@ -1,5 +1,5 @@
 import http from "node:http";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { initDb, pool, withTransaction } from "./db.mjs";
 import {
@@ -1034,7 +1034,7 @@ async function start() {
   server.listen(PORT, () => console.log("Luna API listening on :" + PORT));
 }
 
-if (process.env.NODE_ENV !== "test") start();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) start();
 
 export {
   route,
