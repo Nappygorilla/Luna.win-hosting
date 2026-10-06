@@ -164,6 +164,26 @@
       </div>
     </section>
 
+    <section class="panel-card loyalty-card" id="loyalty-card">
+      <div class="panel-card-top">
+        <div>
+          <span class="section-kicker">LUNA LOYALTY</span>
+          <h2>Member rewards</h2>
+        </div>
+        <span class="status-pill" id="loyalty-tier">—</span>
+      </div>
+      <div class="loyalty-summary">
+        <div class="resource"><span>Loyalty points</span><strong id="loyalty-points">—</strong></div>
+        <div class="resource"><span>Months subscribed</span><strong id="loyalty-months">—</strong></div>
+        <div class="resource"><span>Current perk</span><strong id="loyalty-perk">—</strong></div>
+      </div>
+      <div class="loyalty-progress-wrap">
+        <div class="control-row"><span id="loyalty-next">Sign in to view your next reward.</span><strong id="loyalty-progress-label">—</strong></div>
+        <div class="meter large"><span id="loyalty-progress" style="width:0%"></span></div>
+      </div>
+      <p class="panel-note-inline" id="loyalty-note">Loyalty rewards are calculated from verified subscription tenure.</p>
+    </section>
+
     <section class="panel-note">
       <span class="section-kicker">SECURITY</span>
       <p>Customer actions use authenticated API sessions. VPS agents authenticate with a timestamped HMAC signature and do not send their raw agent secret with normal requests.</p>
