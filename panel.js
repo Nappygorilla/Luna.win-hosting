@@ -394,6 +394,7 @@
       warning.hidden = true;
       await loadServices();
       await loadBilling();
+      await loadLoyalty();
     } catch (error) {
       if (error.status === 401) {
         state.textContent = "Sign in required";
