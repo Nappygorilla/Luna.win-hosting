@@ -6,7 +6,7 @@
   const token = params.get("token") || "";
 
   const names = { starter:"Starter", pro:"Pro", scale:"Scale" };
-  const details = { starter:"512 MB RAM · 1 vCPU · 5 GB storage", pro:"2 GB RAM · 2 vCPU · 20 GB storage", scale:"4 GB RAM · 4 vCPU · 40 GB storage" };
+  const details = { starter:"8 GB RAM · 4 vCPU · 100 GB SSD", pro:"12 GB RAM · 6 vCPU · 200 GB SSD", scale:"24 GB RAM · 8 vCPU · 300 GB SSD" };
 
   const title = document.getElementById("auth-title");
   const copy = document.getElementById("auth-copy");
