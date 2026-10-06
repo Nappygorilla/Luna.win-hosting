@@ -34,8 +34,24 @@ if (terminalStatus) {
     document.getElementById("client-panel-terminal"),
     document.getElementById("client-panel-cta")
   ].filter(Boolean);
+  const loggedOutActions = document.getElementById("logged-out-actions");
 
-  if (!API_BASE || !panelLinks.length) return;
+  if (!panelLinks.length || !loggedOutActions) return;
+
+  const showLoggedOut = () => {
+    loggedOutActions.hidden = false;
+    panelLinks.forEach(link => { link.hidden = true; });
+  };
+
+  const showLoggedIn = () => {
+    loggedOutActions.hidden = true;
+    panelLinks.forEach(link => { link.hidden = false; });
+  };
+
+  if (!API_BASE) {
+    showLoggedOut();
+    return;
+  }
 
   fetch(API_BASE + "/v1/account", {
     method: "GET",
@@ -47,12 +63,10 @@ if (terminalStatus) {
       return response.json();
     })
     .then(data => {
-      if (!data?.user) return;
-      panelLinks.forEach(link => {
-        link.hidden = false;
-      });
+      if (data?.user) showLoggedIn();
+      else showLoggedOut();
     })
     .catch(() => {
-      // Keep panel links hidden when account state cannot be verified.
+      showLoggedOut();
     });
 })();
