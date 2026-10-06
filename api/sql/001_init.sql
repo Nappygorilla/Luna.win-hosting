@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 INSERT INTO plans (id,name,price_monthly_cents,ram_mb,vcpu,storage_gb,runtime_families,restart_policy)
 VALUES
-  ('starter','Starter',499,512,1,5,ARRAY['nodejs','python'],'on-failure-with-backoff'),
+  ('starter','Starter',799,512,1,5,ARRAY['nodejs','python'],'on-failure-with-backoff'),
   ('pro','Pro',699,2048,2,20,ARRAY['nodejs','python'],'on-failure-with-backoff'),
   ('scale','Scale',1499,4096,4,40,ARRAY['nodejs','python'],'on-failure-with-backoff')
 ON CONFLICT (id) DO UPDATE SET
