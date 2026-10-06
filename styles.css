@@ -373,3 +373,12 @@ button:focus:not(:focus-visible) { outline: none; }
   .env-form-actions { justify-content:stretch; }
   .env-form-actions > * { flex:1; }
 }
+
+
+.loyalty-card { margin-top: 18px; }
+.loyalty-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin:22px 0; }
+.loyalty-progress-wrap { display:grid; gap:10px; }
+.loyalty-progress-wrap .control-row { margin:0; }
+@media (max-width: 720px) {
+  .loyalty-summary { grid-template-columns:1fr; }
+}
