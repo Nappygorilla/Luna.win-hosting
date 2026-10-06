@@ -17,7 +17,11 @@ export const PLANS = Object.freeze(
         vcpu: plan.vcpu,
         storageGb: plan.storage_gb,
         runtimeFamilies: plan.runtime_families,
-        restartPolicy: plan.restart_policy
+        restartPolicy: plan.restart_policy,
+        provider: plan.provider_plan || null,
+        snapshotCount: plan.snapshot_count || 0,
+        portMbps: plan.port_mbps || 0,
+        traffic: plan.traffic || null
       })
     ])
   )
