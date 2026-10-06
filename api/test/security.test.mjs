@@ -29,7 +29,9 @@ test("agent signatures verify and plan limits are enforced", () => {
     enforcePlanLimits(plan, { ramMb: 512, vcpu: 1, storageGb: 5 }),
     { ramMb: 512, vcpu: 1, storageGb: 5 }
   );
-  assert.throws(() => enforcePlanLimits(plan, { ramMb: 513, vcpu: 1, storageGb: 5 }));
+  assert.throws(() => enforcePlanLimits(plan, { ramMb: 8193, vcpu: 4, storageGb: 100 }));
+  assert.throws(() => enforcePlanLimits(plan, { ramMb: 8192, vcpu: 5, storageGb: 100 }));
+  assert.throws(() => enforcePlanLimits(plan, { ramMb: 8192, vcpu: 4, storageGb: 101 }));
   assert.throws(() => validateRuntime(plan, "ruby"));
 });
 
