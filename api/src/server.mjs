@@ -147,7 +147,7 @@ async function authenticateAgentRequest(req, payload, requestPath) {
   return { agentId, secret };
 }
 
-function sessionUser(req) {
+async function sessionUser(req) {
   const token = parseCookies(req)[COOKIE];
   if (!token) return null;
   const result = await pool.query(
