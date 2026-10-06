@@ -5,7 +5,7 @@
     {
       "id": "starter",
       "name": "Starter",
-      "price_monthly": 2.99,
+      "price_monthly": 6.00,
       "ram_mb": 512,
       "vcpu": 1,
       "storage_gb": 5,
