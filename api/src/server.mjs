@@ -750,6 +750,7 @@ async function route(req, res) {
     const input = await bodyJson(req);
     const plan = getPlan(input.plan);
     if (!plan) return json(res, 400, { error: "Unknown plan" });
+    if (!plan.available) return json(res, 409, { error: "That plan is currently unavailable" });
 
     const order = await pool.query(
       "INSERT INTO orders(user_id,plan_id) VALUES($1,$2) RETURNING id",
