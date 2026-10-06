@@ -28,3 +28,5 @@ CREATE TABLE IF NOT EXISTS stripe_events (
   error text
 );
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancel_at_period_end boolean NOT NULL DEFAULT false;
+
+UPDATE plans SET price_monthly_cents=600 WHERE id='starter';
