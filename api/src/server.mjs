@@ -521,6 +521,75 @@ async function route(req, res) {
     }});
   }
 
+
+  if (path === "/v1/account/loyalty" && req.method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const result = await pool.query(
+      "SELECT status,created_at FROM subscriptions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1",
+      [user.id]
+    );
+    const subscription = result.rows[0];
+    const active = subscription && ["active","trialing","past_due"].includes(subscription.status);
+    if (!active) {
+      return json(res, 200, {
+        loyalty: {
+          tier: "Moon Member",
+          points: 0,
+          monthsSubscribed: 0,
+          currentPerk: "Start a subscription to earn rewards",
+          nextReward: "1 month · 100 loyalty points",
+          progressPercent: 0,
+          note: "Loyalty points are earned from verified paid subscription tenure."
+        }
+      });
+    }
+
+    const createdAt = new Date(subscription.created_at);
+    const monthsSubscribed = Math.max(0, Math.floor((Date.now() - createdAt.getTime()) / (30.4375 * 24 * 60 * 60 * 1000)));
+    const points = monthsSubscribed * 100;
+
+    let tier = "Moon Member";
+    let currentPerk = "100 points per subscribed month";
+    let nextMonths = 3;
+    let nextReward = "3 months · Loyal status + priority support";
+
+    if (monthsSubscribed >= 12) {
+      tier = "Orbit Elite";
+      currentPerk = "Priority support + annual loyalty reward eligibility";
+      nextMonths = 12;
+      nextReward = "You're at the top loyalty tier.";
+    } else if (monthsSubscribed >= 6) {
+      tier = "Luna VIP";
+      currentPerk = "Priority support + early access to selected features";
+      nextMonths = 12;
+      nextReward = "12 months · Orbit Elite + annual loyalty reward eligibility";
+    } else if (monthsSubscribed >= 3) {
+      tier = "Loyal Moon";
+      currentPerk = "Priority support + loyalty perks";
+      nextMonths = 6;
+      nextReward = "6 months · Luna VIP + early access to selected features";
+    }
+
+    const previousMilestone = monthsSubscribed >= 12 ? 12 : monthsSubscribed >= 6 ? 6 : monthsSubscribed >= 3 ? 3 : 0;
+    const progressPercent = nextMonths === previousMilestone
+      ? 100
+      : Math.min(100, Math.max(0, ((monthsSubscribed - previousMilestone) / (nextMonths - previousMilestone)) * 100));
+
+    return json(res, 200, {
+      loyalty: {
+        tier,
+        points,
+        monthsSubscribed,
+        currentPerk,
+        nextReward,
+        progressPercent,
+        note: "Loyalty status is calculated server-side from your subscription start date. Rewards can be updated as Luna grows."
+      }
+    });
+  }
+
   if (path === "/v1/billing/subscription" && req.method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
