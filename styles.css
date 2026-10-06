@@ -382,3 +382,10 @@ button:focus:not(:focus-visible) { outline: none; }
 @media (max-width: 720px) {
   .loyalty-summary { grid-template-columns:1fr; }
 }
+
+.nav-account { display:inline-flex; align-items:center; gap:8px; }
+.nav-login-primary { background:#fff; color:#050505 !important; border-color:#fff; }
+@media (max-width: 780px) {
+  .nav-account { flex-direction:column; align-items:stretch; width:100%; gap:8px; }
+  .nav-account .nav-login { display:block; text-align:center; }
+}
